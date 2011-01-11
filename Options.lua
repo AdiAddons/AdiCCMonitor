@@ -22,6 +22,7 @@ function addon:GetOptionHandler(target)
 		Set = function(self, info, value)
 			local db, key = self:GetDatabase(info)
 			db[key] = value
+			addon:SendMessage('AdiCCMonitor_ConfigChanged', target, key, value)
 		end,
 	}
 end
