@@ -7,7 +7,7 @@ All rights reserved.
 local addonName, addon = ...
 local L = addon.L
 
-local mod = addon:NewModule('Icons')
+local mod = addon:NewModule('Alerts')
 
 function mod:OnInitialize()
 	self.db = addon.db:RegisterNamespace(self.moduleName)
