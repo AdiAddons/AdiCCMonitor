@@ -46,6 +46,7 @@ addon.GUIDs = GUIDs
 local DEFAULT_SETTINGS = {
 	profile = {
 		modules = { ['*'] = true },
+		onlyMine = false,
 	}
 }
 
@@ -106,6 +107,10 @@ function addon:OnEnable()
 	for name, module in self:IterateModules() do
 		module:SetEnabledState(prefs.modules[name])
 	end
+	
+	self:RefreshFromUnit('target')
+	self:RefreshFromUnit('focus')
+	self:RefreshFromUnit('mouseover')
 end
 
 function addon:OnDisable()
@@ -127,6 +132,10 @@ function addon:OnConfigChanged(key, ...)
 		else
 			self:GetModule(name):Disable()
 		end
+	elseif key == 'onlyMine' then
+		self:RefreshFromUnit('target')
+		self:RefreshFromUnit('focus')
+		self:RefreshFromUnit('mouseover')
 	end
 end
 
@@ -238,12 +247,13 @@ function addon:RefreshFromUnit(unit)
 	self:Debug('RefreshFromUnit', unit, guid)
 	wipe(seen)
 	-- Scan current debuffs
+	local filter = prefs.onlyMine and "PLAYER" or ""
 	local targetName = UnitName(unit)
 	local symbol = GetRaidTargetIndex(unit)
 	local index = 0
 	repeat
 		index = index + 1
-		local name, _, _, _, _, duration, expires, caster, _, _, spellID = UnitDebuff(unit, index)
+		local name, _, _, _, _, duration, expires, caster, _, _, spellID = UnitDebuff(unit, index, nil, filter)
 		if name and spellID and SPELLS[spellID] then
 			seen[spellID] = true
 			self:UpdateSpell(guid, spellID, name, targetName, _,  duration, expires, true)
@@ -324,7 +334,7 @@ local function GetSymbol(flags)
 end
 
 function addon:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, spellName, _, ...)
-	if not destGUID or bit.band(destFlags, COMBATLOG_OBJECT_REACTION_FRIENDLY) ~= 0 then return end
+	if not destGUID or band(destFlags, COMBATLOG_OBJECT_REACTION_FRIENDLY) ~= 0 or (prefs.onlyMine and band(sourceFlags, COMBATLOG_OBJECT_AFFILIATION_MINE) == 0) then return end
 	if event == 'SPELL_AURA_APPLIED' then
 		if spellID and SPELLS[spellID] then
 			local duration = SPELLS[spellID]

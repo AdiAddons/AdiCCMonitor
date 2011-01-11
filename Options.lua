@@ -58,10 +58,17 @@ function addon:GetOptions()
 				type = 'group',
 				args = {
 					modules = {
-						name = L['Modules'],
+						name = L['Enabled modules'],
+						desc = L[''],
 						order = 1,
 						type = 'multiselect',
 						values = moduleList,
+					},
+					onlyMine = {
+						name = L['Only mine'],
+						desc = L['Ignore spells from other players'],
+						order  = 10,
+						type = 'toggle',
 					},
 				},
 			},
