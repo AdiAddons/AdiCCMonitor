@@ -14,7 +14,13 @@ local DEFAULT_SETTINGS = {
 		iconSize = 32,
 		numIcons = 8,
 		vertical = false,
-		anchor = {},
+		anchor = {
+			scale = 1.0,
+			pointFrom = "TOPLEFT",
+			pointTo = "TOPLEFT",
+			xOffset = 20,
+			yOffset = 200,
+		},
 		alpha = 1,
 	}
 }
@@ -67,7 +73,7 @@ function mod:ApplySettings()
 end
 
 function mod:FullRefresh()
-	self:WipeIcons()
+	self:Wipe()
 	for guid, spellId, spell in addon:IterateSpells() do
 		self:AddSpell(guid, spellID, spell)
 	end
@@ -90,7 +96,7 @@ function mod:AddSpell(guid, spellID, spell)
 	icon:Show()
 end
 
-function mod:UpdateSpell(icon, guid, spellID, spell)
+function mod:UpdateSpell(guid, spellID, spell)
 	for icon in self:IterateIcons() do
 		if icon.guid == guid and icon.spellID == spellID then
 			icon:Update(guid, spellID, spell.symbol, spell.duration, spell.expires)
@@ -181,6 +187,7 @@ end
 function mod:CreateAnchor()
 	local anchor = CreateFrame("Frame", nil, UIParent)
 	setmetatable(iconProto, {__index = anchor})
+	anchor:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 20, 200)
 	self:RegisterMovable(anchor, function() return prefs.anchor end, L['AdiCCMonitor icons'])
 	return anchor
 end
@@ -240,7 +247,8 @@ function mod:AcquireIcon()
 		iconHeap[icon] = nil
 	end
 	activeIcons[icon] = true
-	self:ApplySettings()
+	icon:ApplySettings()
+	return icon
 end
 
 function iconProto:Release()
