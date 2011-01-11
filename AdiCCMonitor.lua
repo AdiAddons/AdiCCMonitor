@@ -29,6 +29,17 @@ end
 addon:SetDefaultModulePrototype{Debug = addon.Debug}
 
 --------------------------------------------------------------------------------
+-- Upvalues
+--------------------------------------------------------------------------------
+
+local prefs
+local GUIDs = {}
+
+--@debug@
+addon.GUIDs = GUIDs
+--@end-debug@
+
+--------------------------------------------------------------------------------
 -- Default settings
 --------------------------------------------------------------------------------
 
@@ -75,10 +86,11 @@ function addon:OnInitialize()
 	self.db.RegisterCallback(self, "OnProfileChanged", "Reconfigure")
 	self.db.RegisterCallback(self, "OnProfileCopied", "Reconfigure")
 	self.db.RegisterCallback(self, "OnProfileReset", "Reconfigure")
-	self.GUIDs = {}
 end
 
 function addon:OnEnable()
+	prefs = self.db. profile
+
 	self:RegisterEvent('UNIT_AURA')
 	self:RegisterEvent('UNIT_TARGET')
 	self:RegisterEvent('PLAYER_FOCUS_CHANGED')
@@ -92,12 +104,12 @@ function addon:OnEnable()
 	--@end-debug@
 
 	for name, module in self:IterateModules() do
-		module:SetEnabledState(self.db.profile.modules[name])
+		module:SetEnabledState(prefs.modules[name])
 	end
 end
 
 function addon:OnDisable()
-	for guid in pairs(self.GUIDs) do
+	for guid in pairs(GUIDs) do
 		self:RemoveTarget(guid)
 	end
 end
@@ -119,9 +131,8 @@ function addon:OnConfigChanged(key, ...)
 end
 
 --@debug@
-function addon:SpellDebug(event, guid, spellID)
-	local spell = self:GetSpellData(guid, spellID)
-	self:Debug(event, guid, spellID, spell.accurate, spell.duration, spell.expires)
+function addon:SpellDebug(event, guid, spellID, spell)
+	self:Debug(event, guid, spellID, ':', spell.target, spell.name, spell.symbol, spell.accurate, spell.duration, spell.expires)
 end
 --@end-debug@
 
@@ -152,11 +163,11 @@ end
 --------------------------------------------------------------------------------
 
 function addon:GetGUIDData(guid)
-	local data, isNew = self.GUIDs[guid], false
+	local data, isNew = GUIDs[guid], false
 	if not data then
 		data = new()
 		data.spells = {}
-		self.GUIDs[guid] = data
+		GUIDs[guid] = data
 		isNew = true
 	end
 	return data, isNew
@@ -197,20 +208,20 @@ function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expire
 end
 
 function addon:RemoveSpell(guid, spellID)
-	local data = self.GUIDs[guid]
+	local data = GUIDs[guid]
 	local spell = data and data.spells[spellID]
 	if spell then
 		self:SendMessage('AdiCCMonitor_SpellRemoved', guid, spellID, spell)
 		data.spells[spellID] = del(spell)
 		if not next(data.spells) then
 			self:Debug('Cleaning up guid', guid)
-			self.GUIDs[guid] = del(data)
+			GUIDs[guid] = del(data)
 		end
 	end
 end
 
 function addon:RemoveTarget(guid)
-	local data = self.GUIDs[guid]
+	local data = GUIDs[guid]
 	if data then
 		for id in pairs(data.spells) do
 			self:RemoveSpell(guid, id)
@@ -298,37 +309,31 @@ function addon:PLAYER_FOCUS_CHANGED()
 	end
 end
 
---[[
-local ALLIES = bit.bor(
-	COMBATLOG_OBJECT_AFFILIATION_RAID,
-	COMBATLOG_OBJECT_AFFILIATION_PARTY,
-	COMBATLOG_OBJECT_AFFILIATION_MINE
-)
-]]
+local bor, band = bit.bot, bit.band
 
 local SYMBOL_MASK = 0
 local SYMBOLS = {}
 for i = 1, 8 do
 	local flag = _G['COMBATLOG_OBJECT_RAIDTARGET'..i]
-	SYMBOL_MASK = bit.bor(SYMBOL_MASK, flag)
+	SYMBOL_MASK = bor(SYMBOL_MASK, flag)
 	SYMBOLS[flag] = i
 end
 
 local function GetSymbol(flags)
-	return SYMBOLS[bit.band(flags, SYMBOL_MASK)]
+	return SYMBOLS[band(flags, SYMBOL_MASK)]
 end
 
 function addon:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, spellName, _, ...)
 	if not destGUID or bit.band(destFlags, COMBATLOG_OBJECT_REACTION_FRIENDLY) ~= 0 then return end
 	if event == 'SPELL_AURA_APPLIED' then
-		if spellID and SPELLS[spellID] then -- and bit.band(sourceGUID, ALLIES) ~= 0 then
+		if spellID and SPELLS[spellID] then
 			local duration = SPELLS[spellID]
 			self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destFlags) or false, duration, GetTime()+duration)
 		end
-	elseif destGUID and self.GUIDs[destGUID] then
+	elseif destGUID and GUIDs[destGUID] then
 		if event == 'UNIT_DIED' then
 			self:RemoveTarget(destGUID)
-		elseif spellID and SPELLS[spellID] and self.GUIDs[destGUID].spells[spellID] then
+		elseif spellID and SPELLS[spellID] and GUIDs[destGUID].spells[spellID] then
 			if strsub(event, 1, 17) == 'SPELL_AURA_BROKEN' then
 				self:RemoveSpell(destGUID, spellID, sourceGUID)
 			elseif event == 'SPELL_AURA_REFRESH' then
