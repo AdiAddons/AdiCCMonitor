@@ -63,11 +63,14 @@ function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell)
 	return self:PlanNextUpdate()
 end
 
+local SYMBOLS = {}
+for i = 1, 8 do SYMBOLS[i] = '{'.._G["RAID_TARGET_"..i]..'}' end
+
 function mod:Alert(messageID, guid, spellID, spell)
 	--@not-debug@--
 	if not IsInInstance() then return end
 	--@end-not-debug@--
-	local targetName = spell.symbol and format('{rt%d}', spell.symbol) or spell.target
+	local targetName = SYMBOLS[spell.symbol or false] or spell.target
 	local timeLeft = floor(spell.expires - GetTime() + 0.5)
 	local message
 	if messageID == 'applied' or messageID == 'warning' then
