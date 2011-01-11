@@ -9,6 +9,8 @@ local L = addon.L
 
 local mod = addon:NewModule('Alerts', 'AceEvent-3.0', 'AceTimer-3.0')
 
+local prefs
+
 local DEFAULT_SETTINGS = {
 	profile = {
 		messages = { ['*'] = true },
@@ -21,6 +23,7 @@ function mod:OnInitialize()
 end
 
 function mod:OnEnable()
+	prefs = self.db.profile
 	self:RegisterMessage('AdiCCMonitor_SpellAdded')
 	self:RegisterMessage('AdiCCMonitor_SpellUpdated', "PlanNextUpdate")
 	self:RegisterMessage('AdiCCMonitor_SpellRemoved')
@@ -41,9 +44,9 @@ function mod:PlanNextUpdate()
 		self:CancelTimer(self.runningTimer, true)
 		self.runningTimer = nil
 	end
-	if not self.db.profile.messages.warning then return end
+	if not prefs.messages.warning then return end
 	self:Debug('PlanNextUpdate')
-	local delay = self.db.profile.delay
+	local delay = prefs.delay
 	local nextTime
 	local now = GetTime()
 	for guid, spellId, spell in addon:IterateSpells() do
@@ -86,7 +89,7 @@ function mod:Alert(messageID, guid, spellID, spell)
 	--@not-debug@--
 	if not IsInInstance() then return end
 	--@end-not-debug@--
-	if not self.db.profile.messages[messageID] then
+	if not prefs.messages[messageID] then
 		return
 	end
 	local targetName = SYMBOLS[spell.symbol or false] or spell.target
@@ -129,7 +132,7 @@ function mod:GetOptions()
 				min = 2,
 				max = 15,
 				step = 1,
-				disabled = function(info) return info.handler:IsDisabled(info) or not self.db.profile.messages.warning end,
+				disabled = function(info) return info.handler:IsDisabled(info) or not prefs.messages.warning end,
 				order = 20,
 			},
 		},
