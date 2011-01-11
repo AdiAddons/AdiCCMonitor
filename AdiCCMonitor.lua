@@ -80,9 +80,15 @@ end
 function addon:OnEnable()
 	self:RegisterEvent('UNIT_AURA')
 	self:RegisterEvent('UNIT_TARGET')
-	self:RegisterEvent('PLAYTER_TARGET_CHANGED')
+	self:RegisterEvent('PLAYER_FOCUS_CHANGED')
 	self:RegisterEvent('UPDATE_MOUSEOVER_UNIT')
 	self:RegisterEvent('COMBAT_LOG_EVENT_UNFILTERED')
+
+	--@debug@
+	self:RegisterMessage('AdiCCMonitor_SpellAdded', "SpellDebug")
+	self:RegisterMessage('AdiCCMonitor_SpellUpdated', "SpellDebug")
+	self:RegisterMessage('AdiCCMonitor_SpellRemoved', "SpellDebug")
+	--@end-debug@
 end
 
 function addon:OnDisable()
@@ -95,6 +101,13 @@ function addon:Reconfigure()
 	self:Disable()
 	self:Enable()
 end
+
+--@debug@
+function addon:SpellDebug(event, guid, spellID)
+	local spell = self:GetSpellData(guid, spellID)
+	self:Debug(event, guid, spellID, spell.accurate, spell.duration, spell.expires)
+end
+--@end-debug@
 
 --------------------------------------------------------------------------------
 -- Table recycling
@@ -134,7 +147,7 @@ function addon:GetGUIDData(guid)
 end
 
 function addon:GetSpellData(guid, spellID)
-	local data, isNew = self:GetSpellData(guid)
+	local data, isNew = self:GetGUIDData(guid)
 	local spell
 	if data then
 		spell = data.spells[spellID]
@@ -149,12 +162,15 @@ end
 
 function addon:UpdateSpell(guid, spellID, duration, expires, accurate)
 	local spell, isNew = self:GetSpellData(guid, spellID)
-	if not isNew and not accurate and spell.accurate then return end
-	if spell.duration ~= duration or spell.expires ~= expires then
+	if not isNew and not accurate and spell.accurate then
+		self:Debug('Ignore inaccurate data for', spellID, 'on', guid)
+		return
+	end
+	if spell.accurate ~= accurate or spell.duration ~= duration or spell.expires ~= expires then
 		spell.accurate = accurate
 		spell.duration = duration
 		spell.expires = expires
-		self:SendMessage(isNew and 'AddCCMonitor_SpellAdded' or 'AddCCMonitor_SpellUpdated', guid, spellID)
+		self:SendMessage(isNew and 'AdiCCMonitor_SpellAdded' or 'AdiCCMonitor_SpellUpdated', guid, spellID)
 	end
 end
 
@@ -165,10 +181,11 @@ function addon:RemoveSpell(guid, spellID)
 		self:SendMessage('AdiCCMonitor_SpellRemoved', guid, spellID)
 		data.spells[spellID] = del(spell)
 		if not next(data.spells) then
+			self:Debug('Cleaning up guid', guid)
 			self.GUIDs[guid] = del(data)
 		end
 	end
-en
+end
 
 function addon:RemoveTarget(guid)
 	local data = self.GUIDs[guid]
@@ -182,9 +199,13 @@ end
 local seen = {}
 function addon:RefreshFromUnit(unit)
 	local guid = unit and UnitGUID(unit)
-	if not guid or not UnitCanAttack("player", unit) then return end
+	if not guid or not UnitCanAttack("player", unit) then
+		return
+	end
+	self:Debug('RefreshFromUnit', unit, guid)
 	wipe(seen)
-	local index = 1
+	-- Scan current debuffs
+	local index = 0
 	repeat
 		index = index + 1
 		local name, _, _, _, _, duration, expires, caster, _, _, spellID = UnitDebuff(unit, index)
@@ -193,6 +214,7 @@ function addon:RefreshFromUnit(unit)
 			self:UpdateSpell(guid, spellID, duration, expires, true)
 		end
 	until not name
+	-- Removed debuffs we haven't seen
 	for spellID in pairs(self:GetGUIDData(guid).spells) do
 		if not seen[spellID] then
 			self:RemoveSpell(guid, spellID)
@@ -205,19 +227,33 @@ end
 --------------------------------------------------------------------------------
 
 function addon:UNIT_AURA(event, unit)
-	return self:RefreshFromUnit(unit, true)
+	if unit == 'target' or unit == 'focus' then
+		return self:RefreshFromUnit(unit)
+	end
 end
 
-function addon:PLAYTER_TARGET_CHANGED()
-	return self:RefreshFromUnit("target")
-end
-
-function addon:UPDATE_MOUSEOVER_UNIT(event, unit)
-	return self:RefreshFromUnit("mouseover")
+local lastMouseoverGUID, lastMouseoverTime = nil, 0
+function addon:UPDATE_MOUSEOVER_UNIT(event)
+	if not UnitIsUnit('mouseover', 'target') and not UnitIsUnit('mouseover', 'focus') then
+		local guid, now = UnitGUID("mouseover"), GetTime()
+		if lastMouseoverGUID ~= guid or (now or 0) - lastMouseoverTime >= 1 then
+			lastMouseoverGUID, lastMouseoverTime = guid, now
+			return self:RefreshFromUnit("mouseover")
+		end
+	end
 end
 
 function addon:UNIT_TARGET(event, unit)
-	return self:RefreshFromUnit(gsub(unit.."target", "(%d+)target", "target%1"))
+	local target = (unit == "player") and "target" or gsub(unit.."target", "(%d+)target", "target%1")
+	if not UnitIsUnit(target, 'focus') then
+		return self:RefreshFromUnit(target)
+	end
+end
+
+function addon:PLAYER_FOCUS_CHANGED()
+	if not UnitIsUnit('focus', 'target') then
+		return self:RefreshFromUnit('focus')
+	end
 end
 
 --[[
@@ -238,7 +274,7 @@ function addon:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, sourceGUID, sourceName, 
 	elseif destGUID and self.GUIDs[destGUID] then
 		if event == 'UNIT_DIED' then
 			self:RemoveTarget(destGUID)
-		elseif spellID and SPELLS[spellID] and self.GUIDs[destGUID][spellID] then
+		elseif spellID and SPELLS[spellID] and self.GUIDs[destGUID].spells[spellID] then
 			if strsub(event, 1, 17) == 'SPELL_AURA_BROKEN' then
 				self:RemoveSpell(destGUID, spellID, sourceGUID)
 			elseif event == 'SPELL_AURA_REFRESH' then
