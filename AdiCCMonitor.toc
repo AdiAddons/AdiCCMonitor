@@ -6,7 +6,7 @@
 ## Version: @project-version@
 ## SavedVariables: AdiCCMonitorDB
 ## X-Date: @project-date-iso@
-## OptionalDeps: LibStub, CallbackHandler-1.0, Ace3, AdiDebug
+## OptionalDeps: LibStub, CallbackHandler-1.0, Ace3, LibMovable-1.0, LibDualSpec-1.0, AdiDebug
 
 #@no-lib-strip@
 libs\LibStub\LibStub.lua
@@ -16,15 +16,18 @@ libs\AceDB-3.0\AceDB-3.0.xml
 libs\AceDBOptions-3.0\AceDBOptions-3.0.xml
 libs\AceEvent-3.0\AceEvent-3.0.xml
 libs\AceTimer-3.0\AceTimer-3.0.xml
-libs\AceHook-3.0\AceHook-3.0.xml
-libs\AceBucket-3.0\AceBucket-3.0.xml
 libs\AceGUI-3.0\AceGUI-3.0.xml
 libs\AceConsole-3.0\AceConsole-3.0.xml
 libs\AceConfig-3.0\AceConfig-3.0.xml
+libs\LibDualSpec-1.0\LibDualSpec-1.0.lua
 #@end-no-lib-strip@
+
+# Not on wowace.com
+libs\LibMovable-1.0\LibMovable-1.0.lua
 
 Localization.lua
 AdiCCMonitor.lua
 Icons.lua
 Alerts.lua
 Options.lua
+
