@@ -9,8 +9,15 @@ local L = addon.L
 
 local mod = addon:NewModule('Alerts', 'AceEvent-3.0', 'AceTimer-3.0')
 
+local DEFAULT_SETTINGS = {
+	profile = {
+		messages = { ['*'] = true },
+		delay = 5,
+	}
+}
+
 function mod:OnInitialize()
-	self.db = addon.db:RegisterNamespace(self.moduleName)
+	self.db = addon.db:RegisterNamespace(self.moduleName, DEFAULT_SETTINGS)
 end
 
 function mod:OnEnable()
@@ -23,12 +30,24 @@ end
 --function mod:OnDisable()
 --end
 
+function mod:OnConfigChanged(key, ...)
+	if key == 'delay' or (key == 'messages' and ... == 'warning') then
+		self:PlanNextUpdate()
+	end
+end
+
 function mod:PlanNextUpdate()
+	if self.runningTimer then
+		self:CancelTimer(self.runningTimer, true)
+		self.runningTimer = nil
+	end
+	if not self.db.profile.messages.warning then return end
 	self:Debug('PlanNextUpdate')
+	local delay = self.db.profile.delay
 	local nextTime
 	local now = GetTime()
 	for guid, spellId, spell in addon:IterateSpells() do
-		local alertTime = spell.expires - 5
+		local alertTime = spell.expires - delay
 		local fadingSoon
 		if alertTime > now then
 			if not nextTime or alertTime < nextTime then
@@ -45,9 +64,6 @@ function mod:PlanNextUpdate()
 		end
 	end
 	if nextTime then
-		if self.runningTimer then
-			self:CancelTimer(self.runningTimer, true)
-		end
 		self:Debug('Next update in', nextTime - now)
 		self.runningTimer = self:ScheduleTimer('PlanNextUpdate', nextTime - now)
 	end
@@ -70,6 +86,9 @@ function mod:Alert(messageID, guid, spellID, spell)
 	--@not-debug@--
 	if not IsInInstance() then return end
 	--@end-not-debug@--
+	if not self.db.profile.messages[messageID] then
+		return
+	end
 	local targetName = SYMBOLS[spell.symbol or false] or spell.target
 	local timeLeft = floor(spell.expires - GetTime() + 0.5)
 	local message
@@ -81,4 +100,38 @@ function mod:Alert(messageID, guid, spellID, spell)
 	if message then
 		SendChatMessage(message, "SAY")
 	end
+end
+
+function mod:GetOptions()
+	return {
+		name = L['Alerts'],
+		type = 'group',
+		handler = addon:GetOptionHandler(self),
+		set = 'Set',
+		get = 'Get',
+		disabled = 'IsDisabled',
+		args = {
+			messages = {
+				name = L['Messages'],
+				width = 'full',
+				type = 'multiselect',
+				values = {
+					applied = L['Applied'],
+					removed = L['Removed'],
+					warning = L['About to end'],
+				},
+				order = 10,
+			},
+			delay = {
+				name = L['Warning threshold (sec)'],
+				desc = L['A warning message is sent when the time left for a spell runs below this value.'],
+				type = 'range',
+				min = 2,
+				max = 15,
+				step = 1,
+				disabled = function(info) return info.handler:IsDisabled(info) or not self.db.profile.messages.warning end,
+				order = 20,
+			},
+		},
+	}
 end

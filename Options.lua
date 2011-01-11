@@ -15,24 +15,67 @@ function addon:GetOptionHandler(target)
 		GetDatabase = function(self, info)
 			return target.db.profile, info.args or info[#info]
 		end,
-		Get = function(self, info)
+		Get = function(self, info, subKey)
 			local db, key = self:GetDatabase(info)
-			return db[key]
+			if info.type == 'multiselect' then
+				return db[key][subKey]
+			else
+				return db[key]
+			end
 		end,
-		Set = function(self, info, value)
+		Set = function(self, info, ...)
 			local db, key = self:GetDatabase(info)
-			db[key] = value
-			addon:SendMessage('AdiCCMonitor_ConfigChanged', target, key, value)
+			if info.type == 'multiselect' then
+				local subKey, value = ...
+				db[key][subKey] = value
+			else
+				db[key] = ...
+			end
+			if target.OnConfigChanged then
+				target:OnConfigChanged(key, ...)
+			end
+		end,
+		IsDisabled = function(self)
+			return not target:IsEnabled()
 		end,
 	}
 end
 
 function addon:GetOptions()
 	if options then return options end
+	local moduleList = {}
 	options = {
+		name = addonName,
+		type = 'group',
+		childGroups = 'tab',
 		handler = self:GetOptionHandler(self),
 		set = 'Set',
 		get = 'Get',
+		args = {
+			main = {
+				name = L['Main'],
+				order = 1,
+				type = 'group',
+				args = {
+					modules = {
+						name = L['Modules'],
+						order = 1,
+						type = 'multiselect',
+						values = moduleList,
+					},
+				},
+			},
+			profiles = LibStub('AceDBOptions-3.0'):GetOptionsTable(self.db),
+		},
 	}
+	options.args.profiles.order = -1
+	for name, module in self:IterateModules() do
+		moduleList[name] = L[name]
+		if module.GetOptions then
+			local modOpts = module:GetOptions()
+			modOpts.order = 10
+			options.args[name] = modOpts
+		end
+	end
 	return options
 end

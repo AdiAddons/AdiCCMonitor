@@ -34,6 +34,7 @@ addon:SetDefaultModulePrototype{Debug = addon.Debug}
 
 local DEFAULT_SETTINGS = {
 	profile = {
+		modules = { ['*'] = true },
 	}
 }
 
@@ -89,6 +90,10 @@ function addon:OnEnable()
 	self:RegisterMessage('AdiCCMonitor_SpellUpdated', "SpellDebug")
 	self:RegisterMessage('AdiCCMonitor_SpellRemoved', "SpellDebug")
 	--@end-debug@
+
+	for name, module in self:IterateModules() do
+		module:SetEnabledState(self.db.profile.modules[name])
+	end
 end
 
 function addon:OnDisable()
@@ -100,6 +105,17 @@ end
 function addon:Reconfigure()
 	self:Disable()
 	self:Enable()
+end
+
+function addon:OnConfigChanged(key, ...)
+	if key == 'modules' then
+		local name, enabled = ...
+		if enabled then
+			self:GetModule(name):Enable()
+		else
+			self:GetModule(name):Disable()
+		end
+	end
 end
 
 --@debug@
@@ -294,7 +310,7 @@ local SYMBOL_MASK = 0
 local SYMBOLS = {}
 for i = 1, 8 do
 	local flag = _G['COMBATLOG_OBJECT_RAIDTARGET'..i]
-	SYMBOL_MASK = bit.bor(SYMBOL_MASK, flag) 
+	SYMBOL_MASK = bit.bor(SYMBOL_MASK, flag)
 	SYMBOLS[flag] = i
 end
 
