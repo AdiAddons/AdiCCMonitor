@@ -31,7 +31,7 @@ function mod:OnInitialize()
 	self.db = addon.db:RegisterNamespace(self.moduleName, DEFAULT_SETTINGS)
 	self:RegisterMessage('AdiCCMonitor_SpellAdded')
 	self:RegisterMessage('AdiCCMonitor_SpellUpdated')
-	self:RegisterMessage('AdiCCMonitor_SpellRemoved')	
+	self:RegisterMessage('AdiCCMonitor_SpellRemoved')
 end
 
 function mod:OnEnable()
@@ -77,7 +77,7 @@ end
 function mod:Wipe()
 	for icon in self:IterateIcons() do
 		icon:Release()
-	end	
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -165,6 +165,15 @@ function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell)
 	self:Layout()
 end
 
+function mod:AdiCCMonitor_WipeTarget(event, guid)
+	for icon in self:IterateIcons() do
+		if icon.guid == guid then
+			icon:Release()
+		end
+	end
+	self:Layout()
+end
+
 --------------------------------------------------------------------------------
 -- Anchor widget
 --------------------------------------------------------------------------------
@@ -193,13 +202,13 @@ local borderBackdrop = {
 
 function mod:CreateIcon()
 	local icon = setmetatable(CreateFrame("Frame", nil, anchor), iconMeta)
-	
+
 	--[[
 	icon:SetBackdrop(borderBackdrop)
 	icon:SetBackdropColor(0, 0, 0, 0)
 	icon:SetBackdropBorderColor(1, 1, 1, 1)
 	--]]
-	
+
 	local texture = icon:CreateTexture(nil, "ARTWORK")
 	texture:SetPoint("TOPLEFT", icon, "TOPLEFT", 1, -1)
 	texture:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", -1, 1)
@@ -219,7 +228,7 @@ function mod:CreateIcon()
 	symbol:SetTexture([[Interface\TargetingFrame\UI-RaidTargetingIcons]])
 	symbol:SetVertexColor(1, 1, 1, 1)
 	icon.Symbol = symbol
-		
+
 	return icon
 end
 

@@ -102,12 +102,13 @@ function addon:OnEnable()
 	self:RegisterMessage('AdiCCMonitor_SpellAdded', "SpellDebug")
 	self:RegisterMessage('AdiCCMonitor_SpellUpdated', "SpellDebug")
 	self:RegisterMessage('AdiCCMonitor_SpellRemoved', "SpellDebug")
+	self:RegisterMessage('AdiCCMonitor_WipeTarget', "SpellDebug")
 	--@end-debug@
 
 	for name, module in self:IterateModules() do
 		module:SetEnabledState(prefs.modules[name])
 	end
-	
+
 	self:RefreshFromUnit('target')
 	self:RefreshFromUnit('focus')
 	self:RefreshFromUnit('mouseover')
@@ -115,7 +116,7 @@ end
 
 function addon:OnDisable()
 	for guid in pairs(GUIDs) do
-		self:RemoveTarget(guid)
+		self:RemoveTarget(guid, true)
 	end
 end
 
@@ -216,11 +217,13 @@ function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expire
 	end
 end
 
-function addon:RemoveSpell(guid, spellID)
+function addon:RemoveSpell(guid, spellID, silent)
 	local data = GUIDs[guid]
 	local spell = data and data.spells[spellID]
 	if spell then
-		self:SendMessage('AdiCCMonitor_SpellRemoved', guid, spellID, spell)
+		if not silent then
+			self:SendMessage('AdiCCMonitor_SpellRemoved', guid, spellID, spell)
+		end
 		data.spells[spellID] = del(spell)
 		if not next(data.spells) then
 			self:Debug('Cleaning up guid', guid)
@@ -229,11 +232,14 @@ function addon:RemoveSpell(guid, spellID)
 	end
 end
 
-function addon:RemoveTarget(guid)
+function addon:RemoveTarget(guid, silent)
 	local data = GUIDs[guid]
 	if data then
 		for id in pairs(data.spells) do
-			self:RemoveSpell(guid, id)
+			self:RemoveSpell(guid, id, true)
+		end
+		if not silent then
+			self:SendMessage('AdiCCMonitor_WipeTarget', guid)
 		end
 	end
 end
@@ -345,7 +351,7 @@ function addon:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, sourceGUID, sourceName, 
 			self:RemoveTarget(destGUID)
 		elseif spellID and SPELLS[spellID] and GUIDs[destGUID].spells[spellID] then
 			if strsub(event, 1, 17) == 'SPELL_AURA_BROKEN' then
-				self:RemoveSpell(destGUID, spellID, sourceGUID)
+				self:RemoveSpell(destGUID, spellID)
 			elseif event == 'SPELL_AURA_REFRESH' then
 				local duration = SPELLS[spellID]
 				self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destFlags) or false, duration, GetTime()+duration)

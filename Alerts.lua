@@ -25,8 +25,9 @@ end
 function mod:OnEnable()
 	prefs = self.db.profile
 	self:RegisterMessage('AdiCCMonitor_SpellAdded')
-	self:RegisterMessage('AdiCCMonitor_SpellUpdated', "PlanNextUpdate")
 	self:RegisterMessage('AdiCCMonitor_SpellRemoved')
+	self:RegisterMessage('AdiCCMonitor_SpellUpdated', 'PlanNextUpdate')
+	self:RegisterMessage('AdiCCMonitor_WipeTarget', 'PlanNextUpdate')
 	self.runningTimer = nil
 end
 
@@ -73,12 +74,12 @@ function mod:PlanNextUpdate()
 end
 
 function mod:AdiCCMonitor_SpellAdded(event, guid, spellID, spell)
-	self:Alert('applied', guid, spellId, spell)
+	self:Alert('applied', guid, spellID, spell)
 	return self:PlanNextUpdate()
 end
 
 function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell)
-	self:Alert('removed', guid, spellId, spell)
+	self:Alert('removed', guid, spellID, spell)
 	return self:PlanNextUpdate()
 end
 
