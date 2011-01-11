@@ -45,7 +45,7 @@ local DEFAULT_SETTINGS = {
 local SPELLS = {
 	[  710] = 30, -- Banish
 	[76780] = 50, -- Bind Elemental
-	[33786] =  6, -- Cyclone
+	--[33786] =  6, -- Cyclone
   [  339] = 30, -- Entangling Roots
 	[ 5782] = 20, -- Fear
 	[ 3355] = 60, -- Freezing Trap
@@ -160,17 +160,23 @@ function addon:GetSpellData(guid, spellID)
 	return spell, isNew
 end
 
-function addon:UpdateSpell(guid, spellID, duration, expires, accurate)
+function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expires, accurate)
 	local spell, isNew = self:GetSpellData(guid, spellID)
 	if not isNew and not accurate and spell.accurate then
 		self:Debug('Ignore inaccurate data for', spellID, 'on', guid)
 		return
 	end
-	if spell.accurate ~= accurate or spell.duration ~= duration or spell.expires ~= expires then
+	if symbol == false then
+		symbol = spell.symbol
+	end
+	if spell.name ~= name or spell.target ~= target or spell.symbol ~= symbol or spell.accurate ~= accurate or spell.duration ~= duration or spell.expires ~= expires then
+		spell.name = name
+		spell.target = target
+		spell.symbol = symbol
 		spell.accurate = accurate
 		spell.duration = duration
 		spell.expires = expires
-		self:SendMessage(isNew and 'AdiCCMonitor_SpellAdded' or 'AdiCCMonitor_SpellUpdated', guid, spellID)
+		self:SendMessage(isNew and 'AdiCCMonitor_SpellAdded' or 'AdiCCMonitor_SpellUpdated', guid, spellID, spell)
 	end
 end
 
@@ -178,7 +184,7 @@ function addon:RemoveSpell(guid, spellID)
 	local data = self.GUIDs[guid]
 	local spell = data and data.spells[spellID]
 	if spell then
-		self:SendMessage('AdiCCMonitor_SpellRemoved', guid, spellID)
+		self:SendMessage('AdiCCMonitor_SpellRemoved', guid, spellID, spell)
 		data.spells[spellID] = del(spell)
 		if not next(data.spells) then
 			self:Debug('Cleaning up guid', guid)
@@ -205,13 +211,15 @@ function addon:RefreshFromUnit(unit)
 	self:Debug('RefreshFromUnit', unit, guid)
 	wipe(seen)
 	-- Scan current debuffs
+	local targetName = UnitName(unit)
+	local symbol = GetRaidTargetIndex(unit)
 	local index = 0
 	repeat
 		index = index + 1
 		local name, _, _, _, _, duration, expires, caster, _, _, spellID = UnitDebuff(unit, index)
 		if name and spellID and SPELLS[spellID] then
 			seen[spellID] = true
-			self:UpdateSpell(guid, spellID, duration, expires, true)
+			self:UpdateSpell(guid, spellID, name, targetName, _,  duration, expires, true)
 		end
 	until not name
 	-- Removed debuffs we haven't seen
@@ -220,6 +228,24 @@ function addon:RefreshFromUnit(unit)
 			self:RemoveSpell(guid, spellID)
 		end
 	end
+end
+
+local function spellIterator(t)
+	repeat
+		if t.data then
+			local spell
+			t.spellID, spell = next(t.data.spells, t.spellID)
+			if t.spellID then
+				return t.guid, t.spellID, spell
+			end
+		end
+		t.guid, t.data = next(addon.GUIDs, t.guid)
+	until not t.guid
+	del(t)
+end
+
+function addon:IterateSpells()
+	return spellIterator, new()
 end
 
 --------------------------------------------------------------------------------
@@ -264,12 +290,24 @@ local ALLIES = bit.bor(
 )
 ]]
 
+local SYMBOL_MASK = 0
+local SYMBOLS = {}
+for i = 1, 8 do
+	local flag = _G['COMBATLOG_OBJECT_RAIDTARGET'..i]
+	SYMBOL_MASK = bit.bor(SYMBOL_MASK, flag) 
+	SYMBOLS[flag] = i
+end
+
+local function GetSymbol(flags)
+	return SYMBOLS[bit.band(flags, SYMBOL_MASK)]
+end
+
 function addon:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, spellName, _, ...)
 	if not destGUID or bit.band(destFlags, COMBATLOG_OBJECT_REACTION_FRIENDLY) ~= 0 then return end
 	if event == 'SPELL_AURA_APPLIED' then
 		if spellID and SPELLS[spellID] then -- and bit.band(sourceGUID, ALLIES) ~= 0 then
 			local duration = SPELLS[spellID]
-			self:UpdateSpell(destGUID, spellID, duration, GetTime()+duration)
+			self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destFlags) or false, duration, GetTime()+duration)
 		end
 	elseif destGUID and self.GUIDs[destGUID] then
 		if event == 'UNIT_DIED' then
@@ -279,7 +317,7 @@ function addon:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, sourceGUID, sourceName, 
 				self:RemoveSpell(destGUID, spellID, sourceGUID)
 			elseif event == 'SPELL_AURA_REFRESH' then
 				local duration = SPELLS[spellID]
-				self:UpdateSpell(destGUID, spellID, duration, GetTime()+duration)
+				self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destFlags) or false, duration, GetTime()+duration)
 			elseif event == 'SPELL_AURA_REMOVED' then
 				self:RemoveSpell(destGUID, spellID)
 			end
