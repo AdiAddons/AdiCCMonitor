@@ -148,7 +148,11 @@ end
 
 --@debug@
 function addon:SpellDebug(event, guid, spellID, spell)
-	self:Debug(event, guid, spellID, ':', spell.target, spell.name, spell.symbol, spell.accurate, spell.duration, spell.expires)
+	if event == 'AdiCCMonitor_WipeTarget' then
+		self:Debug(event, guid)
+	else
+		self:Debug(event, guid, spellID, ':', spell.target, spell.name, spell.symbol, spell.accurate, spell.duration, spell.expires)
+	end
 end
 --@end-debug@
 
@@ -331,7 +335,7 @@ function addon:PLAYER_FOCUS_CHANGED()
 	end
 end
 
-local bor, band = bit.bot, bit.band
+local bor, band = bit.bor, bit.band
 
 local SYMBOL_MASK = 0
 local SYMBOLS = {}
