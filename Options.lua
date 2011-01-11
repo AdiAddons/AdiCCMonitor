@@ -44,6 +44,11 @@ end
 function addon:GetOptions()
 	if options then return options end
 	local moduleList = {}
+
+	local profileOpts = LibStub('AceDBOptions-3.0'):GetOptionsTable(self.db)
+	LibStub('LibDualSpec-1.0'):EnhanceOptions(profileOpts, self.db)
+	profileOpts.order = -1
+
 	options = {
 		name = addonName,
 		type = 'group',
@@ -72,10 +77,9 @@ function addon:GetOptions()
 					},
 				},
 			},
-			profiles = LibStub('AceDBOptions-3.0'):GetOptionsTable(self.db),
+			profiles = profileOpts,
 		},
 	}
-	options.args.profiles.order = -1
 	for name, module in self:IterateModules() do
 		moduleList[name] = L[name]
 		if module.GetOptions then

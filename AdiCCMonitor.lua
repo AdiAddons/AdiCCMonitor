@@ -87,10 +87,13 @@ function addon:OnInitialize()
 	self.db.RegisterCallback(self, "OnProfileChanged", "Reconfigure")
 	self.db.RegisterCallback(self, "OnProfileCopied", "Reconfigure")
 	self.db.RegisterCallback(self, "OnProfileReset", "Reconfigure")
+	
+	LibStub('LibDualSpec-1.0'):EnhanceDatabase(self.db, addonName)
+	
 end
 
 function addon:OnEnable()
-	prefs = self.db. profile
+	prefs = self.db.profile
 
 	self:RegisterEvent('UNIT_AURA')
 	self:RegisterEvent('UNIT_TARGET')
