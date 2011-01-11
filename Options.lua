@@ -41,8 +41,10 @@ function addon:GetOptionHandler(target)
 	}
 end
 
-function addon:GetOptions()
+function addon.GetOptions()
 	if options then return options end
+	local self = addon
+
 	local moduleList = {}
 
 	local profileOpts = LibStub('AceDBOptions-3.0'):GetOptionsTable(self.db)
