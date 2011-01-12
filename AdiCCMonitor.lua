@@ -87,12 +87,12 @@ function addon:OnInitialize()
 	self.db.RegisterCallback(self, "OnProfileChanged", "Reconfigure")
 	self.db.RegisterCallback(self, "OnProfileCopied", "Reconfigure")
 	self.db.RegisterCallback(self, "OnProfileReset", "Reconfigure")
-	
+
 	LibStub('LibDualSpec-1.0'):EnhanceDatabase(self.db, addonName)
-	
+
 	LibStub('AceConfig-3.0'):RegisterOptionsTable(addonName, self.GetOptions)
 	self.blizPanel = LibStub('AceConfigDialog-3.0'):AddToBlizOptions(addonName, addonName)
-	
+
 end
 
 function addon:OnEnable()
@@ -103,6 +103,7 @@ function addon:OnEnable()
 	self:RegisterEvent('PLAYER_FOCUS_CHANGED')
 	self:RegisterEvent('UPDATE_MOUSEOVER_UNIT')
 	self:RegisterEvent('COMBAT_LOG_EVENT_UNFILTERED')
+	self:RegisterEvent('RAID_TARGET_UPDATE', 'FullRefresh')
 
 	--@debug@
 	self:RegisterMessage('AdiCCMonitor_SpellAdded', "SpellDebug")
@@ -115,9 +116,7 @@ function addon:OnEnable()
 		module:SetEnabledState(prefs.modules[name])
 	end
 
-	self:RefreshFromUnit('target')
-	self:RefreshFromUnit('focus')
-	self:RefreshFromUnit('mouseover')
+	self:FullRefresh()
 end
 
 function addon:OnDisable()
@@ -140,9 +139,20 @@ function addon:OnConfigChanged(key, ...)
 			self:GetModule(name):Disable()
 		end
 	elseif key == 'onlyMine' then
-		self:RefreshFromUnit('target')
-		self:RefreshFromUnit('focus')
-		self:RefreshFromUnit('mouseover')
+		self:FullRefresh()
+	end
+end
+
+function addon:FullRefresh()
+	self:RefreshFromUnit('target')
+	self:RefreshFromUnit('focus')
+	self:RefreshFromUnit('mouseover')
+	local prefix, num = "raidtarget", GetNumRaidMembers()
+	if num == 0 then
+		prefix, num = "partytarget", GetNumPartyMembers()
+	end
+	for i = 1, num do
+		self:RefreshFromUnit(prefix..num)
 	end
 end
 
@@ -272,7 +282,7 @@ function addon:RefreshFromUnit(unit)
 		local name, _, _, _, _, duration, expires, caster, _, _, spellID = UnitDebuff(unit, index, nil, filter)
 		if name and spellID and SPELLS[spellID] then
 			seen[spellID] = true
-			self:UpdateSpell(guid, spellID, name, targetName, _,  duration, expires, true)
+			self:UpdateSpell(guid, spellID, name, targetName, symbol, duration, expires, true)
 		end
 	until not name
 	-- Removed debuffs we haven't seen
