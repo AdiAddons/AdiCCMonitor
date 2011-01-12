@@ -298,7 +298,6 @@ function mod:AcquireIcon()
 end
 
 function iconProto:Release()
-	self:StopFadingOut()
 	self.guid, self.spellID, self.symbol, self.duration, self.expires = nil
 	self:Hide()
 	activeIcons[self] = nil
@@ -309,7 +308,6 @@ function iconProto:Update(guid, spellID, symbol, duration, expires)
 	self.guid = guid
 	if self.spellID ~= spellID or self.symbol ~= symbol or self.duration ~= duration or self.expires ~= expires then
 		self.spellID, self.symbol, self.duration, self.expires = spellID, symbol, duration, expires
-		self:StopFadingOut()
 		self:UpdateWidgets()
 	end
 end
