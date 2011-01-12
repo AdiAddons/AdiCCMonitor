@@ -34,9 +34,11 @@ addon:SetDefaultModulePrototype{Debug = addon.Debug}
 
 local prefs
 local GUIDs = {}
+local playerSpellDurations = {}
 
 --@debug@
 addon.GUIDs = GUIDs
+addon.playerSpellDurations = playerSpellDurations
 --@end-debug@
 
 --------------------------------------------------------------------------------
@@ -283,6 +285,10 @@ function addon:RefreshFromUnit(unit)
 		if name and spellID and SPELLS[spellID] then
 			seen[spellID] = true
 			self:UpdateSpell(guid, spellID, name, targetName, symbol, duration, expires, true)
+			local casterGUID = UnitGUID(caster)
+			if casterGUID then
+				playerSpellDurations[casterGUID..'-'..spellID] = duration
+			end
 		end
 	until not name
 	-- Removed debuffs we haven't seen
@@ -356,15 +362,19 @@ for i = 1, 8 do
 end
 
 local function GetSymbol(flags)
-	return SYMBOLS[band(flags, SYMBOL_MASK)]
+	return SYMBOLS[band(flags, SYMBOL_MASK)] or false
+end
+
+local function GetDefaultDuration(guid, spellID)
+	return guid and spellID and (playerSpellDurations[guid..'-'..spellID] or SPELLS[spellID])
 end
 
 function addon:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, spellName, _, ...)
 	if not destGUID or band(destFlags, COMBATLOG_OBJECT_REACTION_FRIENDLY) ~= 0 or (prefs.onlyMine and band(sourceFlags, COMBATLOG_OBJECT_AFFILIATION_MINE) == 0) then return end
 	if event == 'SPELL_AURA_APPLIED' then
 		if spellID and SPELLS[spellID] then
-			local duration = SPELLS[spellID]
-			self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destFlags) or false, duration, GetTime()+duration)
+			local duration = GetDefaultDuration(sourceGUID, spellID)
+			self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destFlags), duration, GetTime()+duration)
 		end
 	elseif destGUID and GUIDs[destGUID] then
 		if event == 'UNIT_DIED' then
@@ -373,8 +383,8 @@ function addon:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, sourceGUID, sourceName, 
 			if strsub(event, 1, 17) == 'SPELL_AURA_BROKEN' then
 				self:RemoveSpell(destGUID, spellID)
 			elseif event == 'SPELL_AURA_REFRESH' then
-				local duration = SPELLS[spellID]
-				self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destFlags) or false, duration, GetTime()+duration)
+				local duration = GetDefaultDuration(sourceGUID, spellID)
+				self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destFlags), duration, GetTime()+duration)
 			elseif event == 'SPELL_AURA_REMOVED' then
 				self:RemoveSpell(destGUID, spellID)
 			end
