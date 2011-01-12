@@ -19,9 +19,12 @@ local DEFAULT_SETTINGS = {
 			pointFrom = "TOPLEFT",
 			pointTo = "TOPLEFT",
 			xOffset = 20,
-			yOffset = 200,
+			yOffset = -200,
 		},
 		alpha = 1,
+		showSymbol = true,
+		showCountdown = true,
+		showCooldown = true,
 	}
 }
 
@@ -45,9 +48,8 @@ function mod:OnEnable()
 	if not anchor then
 		anchor = self:CreateAnchor()
 	end
-	self:ApplySettings()
-	self:FullRefresh()
 	anchor:Show()
+	self:ApplySettings(true)
 end
 
 function mod:OnDisable()
@@ -59,23 +61,36 @@ function mod:OnConfigChanged()
 	self:ApplySettings()
 end
 
-function mod:ApplySettings()
+function mod:ApplySettings(fullRefresh)
+
 	if prefs.vertical then
 		anchor:SetSize(prefs.iconSize, prefs.iconSize * prefs.numIcons)
 	else
 		anchor:SetSize(prefs.iconSize * prefs.numIcons, prefs.iconSize)
 	end
+
 	anchor:SetAlpha(prefs.alpha)
+	anchor:ClearAllPoints()
+	local a = prefs.anchor
+	anchor:SetScale(a.scale)
+	anchor:SetPoint(a.pointFrom, UIParent, a.pointTo, a.xOffset, a.yOffset)
+
 	for icon in self:IterateIcons() do
-		icon:ApplySettings()
+		icon:UpdateWidgets()
 	end
-	self:Layout()
+
+	if fullRefresh then
+		self:FullRefresh()
+	else
+		self:Layout()
+	end
+
 end
 
 function mod:FullRefresh()
 	self:Wipe()
 	for guid, spellId, spell in addon:IterateSpells() do
-		self:AddSpell(guid, spellID, spell)
+		self:UpdateSpell(guid, spellID, spell)
 	end
 	self:Layout()
 end
@@ -125,13 +140,13 @@ end
 local iconOrder = {}
 function mod:Layout()
 	if not next(activeIcons) then return end
-	local point = prefs.anchor.pointFrom
 	local dx, dy = 0, 0
 	if prefs.vertical then
-		dy = strmatch(point, 'BOTTOM') and 1 or -1
+		dy = strmatch(prefs.anchor.pointFrom, 'TOP') and -1 or 1
 	else
-		dx = strmatch(point, 'RIGHT') and -1 or 1
+		dx = strmatch(prefs.anchor.pointFrom, 'RIGHT') and -1 or 1
 	end
+	local point = (dy == -1 and "TOP" or "BOTTOM")..(dx == -1 and "RIGHT" or "LEFT")
 	wipe(iconOrder)
 	for icon in self:IterateIcons() do
 		tinsert(iconOrder, icon)
@@ -142,6 +157,7 @@ function mod:Layout()
 	for i, icon in ipairs(iconOrder) do
 		if i <= numIcons then
 			icon:ClearAllPoints()
+			icon:SetSize(size, size)
 			icon:SetPoint(point, anchor, point, x, y)
 			icon:Show()
 			x = x + dx * size
@@ -184,10 +200,29 @@ end
 -- Anchor widget
 --------------------------------------------------------------------------------
 
+local runningCountdowns = {}
+local delay = 0
+
+local function UpdateCountdowns(self, elapsed)
+	delay = delay - elapsed
+	if delay > 0 then return end
+	delay = 0.09
+	local now = GetTime()
+	for icon in pairs(runningCountdowns) do
+		if icon:IsVisible() then
+			icon:UpdateCountdown(now)
+		end
+	end
+end
+
 function mod:CreateAnchor()
 	local anchor = CreateFrame("Frame", nil, UIParent)
 	setmetatable(iconProto, {__index = anchor})
-	anchor:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 20, 200)
+	anchor:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 20, -200)
+	anchor:SetClampedToScreen(true)
+	anchor:SetFrameStrata("HIGH")
+	anchor:SetScript('OnUpdate', UpdateCountdowns)
+	anchor.LM10_OnDatabaseUpdated = function() self:Layout() end
 	self:RegisterMovable(anchor, function() return prefs.anchor end, L['AdiCCMonitor icons'])
 	return anchor
 end
@@ -209,6 +244,7 @@ local borderBackdrop = {
 
 function mod:CreateIcon()
 	local icon = setmetatable(CreateFrame("Frame", nil, anchor), iconMeta)
+	icon:SetScript('OnSizeChanged', icon.OnSizeChanged)
 
 	--[[
 	icon:SetBackdrop(borderBackdrop)
@@ -227,14 +263,25 @@ function mod:CreateIcon()
 	cooldown:SetAllPoints(texture)
 	cooldown:SetDrawEdge(true)
 	cooldown:SetReverse(true)
+	cooldown:Hide()
+	cooldown.noCooldownCount = true
 	icon.Cooldown = cooldown
 
-	local symbol = icon:CreateTexture(nil, "OVERLAY")
-	symbol:SetPoint("TOPLEFT", icon, "TOPLEFT", 1, -1)
-	symbol:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", -1, 1)
+	local overlay = CreateFrame("Frame", nil, icon)
+	overlay:SetAllPoints(icon)
+	overlay:SetFrameLevel(cooldown:GetFrameLevel()+1)
+
+	local symbol = overlay:CreateTexture(nil, "OVERLAY")
+	symbol:SetPoint("CENTER")
 	symbol:SetTexture([[Interface\TargetingFrame\UI-RaidTargetingIcons]])
 	symbol:SetVertexColor(1, 1, 1, 1)
+	symbol:Hide()
 	icon.Symbol = symbol
+
+	local countdown = overlay:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+	countdown:SetPoint("BOTTOM", 0, 2)
+	countdown:Hide()
+	icon.Countdown = countdown
 
 	return icon
 end
@@ -247,11 +294,11 @@ function mod:AcquireIcon()
 		iconHeap[icon] = nil
 	end
 	activeIcons[icon] = true
-	icon:ApplySettings()
 	return icon
 end
 
 function iconProto:Release()
+	self:StopFadingOut()
 	self.guid, self.spellID, self.symbol, self.duration, self.expires = nil
 	self:Hide()
 	activeIcons[self] = nil
@@ -260,33 +307,55 @@ end
 
 function iconProto:Update(guid, spellID, symbol, duration, expires)
 	self.guid = guid
-	if self.spellID ~= spellID then
-		self.spellID = spellID
-		local _, _, texture = GetSpellInfo(spellID)
-		self.Texture:SetTexture(texture)
-	end
-	if self.symbol ~= symbol then
-		self.symbol = symbol
-		if symbol then
-			SetRaidTargetIconTexture(self.Symbol, symbol)
-			self.Symbol:Show()
-		else
-			self.Symbol:Hide()
-		end
-	end
-	if self.duration ~= duration or self.expires ~= expires then
-		self.duration, self.expires = duration, expires
-		if duration and expires then
-			self.Cooldown:SetCooldown(expires-duration, duration)
-			self.Cooldown:Show()
-		else
-			self.Cooldown:Hide()
-		end
+	if self.spellID ~= spellID or self.symbol ~= symbol or self.duration ~= duration or self.expires ~= expires then
+		self.spellID, self.symbol, self.duration, self.expires = spellID, symbol, duration, expires
+		self:StopFadingOut()
+		self:UpdateWidgets()
 	end
 end
 
-function iconProto:ApplySettings()
-	self:SetSize(prefs.iconSize, prefs.iconSize)
+function iconProto:UpdateWidgets()
+	if self.spellID then
+		local _, _, texture = GetSpellInfo(self.spellID)
+		self.Texture:SetTexture(texture)
+		self.Texture:Show()
+	else
+		self.Texture:Hide()
+	end
+	if self.symbol and prefs.showSymbol then
+		SetRaidTargetIconTexture(self.Symbol, self.symbol)
+		self.Symbol:Show()
+	else
+		self.Symbol:Hide()
+	end
+	if self.duration and self.expires and prefs.showCooldown then
+		self.Cooldown:SetCooldown(self.expires - self.duration, self.duration)
+		self.Cooldown:Show()
+	else
+		self.Cooldown:Hide()
+	end
+	if prefs.showCountdown and self:UpdateCountdown(GetTime()) then
+		self.Countdown:Show()
+		runningCountdowns[self] = true
+	else
+		self.Countdown:Hide()
+		runningCountdowns[self] = nil
+	end
+end
+
+function iconProto:UpdateCountdown(now)
+	local timeLeft = self.expires and (self.expires - now) or 0
+	if timeLeft > 0 then
+		self.Countdown:SetFormattedText("%d", ceil(timeLeft))
+		return true
+	end
+end
+
+function iconProto:OnSizeChanged(width, height)
+	if width and height then
+		mod:Debug(self, 'OnSizeChanged', width, height)
+		self.Symbol:SetSize(width*0.5, height*0.5)
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -305,13 +374,15 @@ function mod:GetOptions()
 			iconSize = {
 				name = L['Icon size'],
 				type = 'range',
-				min = 16,
+				min = 32,
 				max = 64,
 				step = 1,
+				order = 10,
 			},
 			vertical = {
 				name = L['Vertical'],
 				type = 'toggle',
+				order = 20,
 			},
 			numIcons = {
 				name = L['Number of icons'],
@@ -319,15 +390,31 @@ function mod:GetOptions()
 				min = 1,
 				max = 15,
 				step = 1,
+				order = 30,
 			},
 			alpha = {
 				name = L['Opacity'],
 				type = 'range',
 				isPercent = true,
-				min = 0.01,
-				max = 1.00,
+				min = 0.10,
+				max = 1,
 				step = 0.01,
-				bigStep = 1,
+				order = 40,
+			},
+			showSymbol = {
+				name = L['Show symbol'],
+				type = 'toggle',
+				order = 50,
+			},
+			showCountdown = {
+				name = L['Show countdown'],
+				type = 'toggle',
+				order = 60,
+			},
+			showCooldown = {
+				name = L['Show cooldown model'],
+				type = 'toggle',
+				order = 70,
 			},
 			lockAnchor = {
 				name = function() return self:AreMovablesLocked() and L['Unlock anchor'] or L['Lock anchor'] end,
@@ -339,11 +426,13 @@ function mod:GetOptions()
 						self:LockMovables()
 					end
 				end,
+				order = 80,
 			},
 			resetPosition = {
 				name = L['Reset position'],
 				type = 'execute',
 				func = function() self:ResetMovableLayout() end,
+				order = 90,
 			},
 		},
 	}
