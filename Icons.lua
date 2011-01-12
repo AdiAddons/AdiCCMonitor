@@ -107,14 +107,14 @@ end
 
 function mod:AddSpell(guid, spellID, spell)
 	local icon = self:AcquireIcon()
-	icon:Update(guid, spellID, spell.symbol, spell.duration, spell.expires)
+	icon:Update(guid, spellID, spell.symbol, spell.duration, spell.expires, spell.isMine)
 	icon:Show()
 end
 
 function mod:UpdateSpell(guid, spellID, spell)
 	for icon in self:IterateIcons() do
 		if icon.guid == guid and icon.spellID == spellID then
-			icon:Update(guid, spellID, spell.symbol, spell.duration, spell.expires)
+			icon:Update(guid, spellID, spell.symbol, spell.duration, spell.expires, spell.isMine)
 			return
 		end
 	end
@@ -152,10 +152,11 @@ function mod:Layout()
 		tinsert(iconOrder, icon)
 	end
 	table.sort(iconOrder, SortIcons)
-	local size, x, y = prefs.iconSize, 0, 0
+	local x, y = 0, 0
 	local numIcons = prefs.numIcons
 	for i, icon in ipairs(iconOrder) do
 		if i <= numIcons then
+			local size = prefs.iconSize * (icon.isMine and 1 or 0.8)
 			icon:ClearAllPoints()
 			icon:SetSize(size, size)
 			icon:SetPoint(point, anchor, point, x, y)
@@ -304,10 +305,10 @@ function iconProto:Release()
 	iconHeap[self] = true
 end
 
-function iconProto:Update(guid, spellID, symbol, duration, expires)
+function iconProto:Update(guid, spellID, symbol, duration, expires, isMine)
 	self.guid = guid
-	if self.spellID ~= spellID or self.symbol ~= symbol or self.duration ~= duration or self.expires ~= expires then
-		self.spellID, self.symbol, self.duration, self.expires = spellID, symbol, duration, expires
+	if self.spellID ~= spellID or self.symbol ~= symbol or self.duration ~= duration or self.expires ~= expires or self.isMine ~= isMine then
+		self.spellID, self.symbol, self.duration, self.expires, self.isMine = spellID, symbol, duration, expires, isMine
 		self:UpdateWidgets()
 	end
 end

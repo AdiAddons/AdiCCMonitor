@@ -219,7 +219,7 @@ function addon:GetSpellData(guid, spellID)
 	return spell, isNew
 end
 
-function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expires, accurate)
+function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expires, isMine, accurate)
 	local spell, isNew = self:GetSpellData(guid, spellID)
 	if not isNew and not accurate and spell.accurate then
 		self:Debug('Ignore inaccurate data for', spellID, 'on', guid)
@@ -228,13 +228,14 @@ function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expire
 	if symbol == false then
 		symbol = spell.symbol
 	end
-	if spell.name ~= name or spell.target ~= target or spell.symbol ~= symbol or spell.accurate ~= accurate or spell.duration ~= duration or spell.expires ~= expires then
+	if spell.name ~= name or spell.target ~= target or spell.symbol ~= symbol or spell.accurate ~= accurate or spell.duration ~= duration or spell.expires ~= expires or self.isMine ~= isMine then
 		spell.name = name
 		spell.target = target
 		spell.symbol = symbol
 		spell.accurate = accurate
 		spell.duration = duration
 		spell.expires = expires
+		spell.isMine = isMine
 		self:SendMessage(isNew and 'AdiCCMonitor_SpellAdded' or 'AdiCCMonitor_SpellUpdated', guid, spellID, spell)
 	end
 end
@@ -283,8 +284,9 @@ function addon:RefreshFromUnit(unit)
 		index = index + 1
 		local name, _, _, _, _, duration, expires, caster, _, _, spellID = UnitDebuff(unit, index, nil, filter)
 		if name and spellID and SPELLS[spellID] then
+			local isMine = (caster == 'player' or caster == 'pet' or caster == 'vehicle')
 			seen[spellID] = true
-			self:UpdateSpell(guid, spellID, name, targetName, symbol, duration, expires, true)
+			self:UpdateSpell(guid, spellID, name, targetName, symbol, duration, expires, isMine, true)
 			local casterGUID = UnitGUID(caster)
 			if casterGUID then
 				playerSpellDurations[casterGUID..'-'..spellID] = duration
@@ -370,24 +372,20 @@ local function GetDefaultDuration(guid, spellID)
 end
 
 function addon:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, spellName, _, ...)
-	if not destGUID or band(destFlags, COMBATLOG_OBJECT_REACTION_FRIENDLY) ~= 0 or (prefs.onlyMine and band(sourceFlags, COMBATLOG_OBJECT_AFFILIATION_MINE) == 0) then return end
-	if event == 'SPELL_AURA_APPLIED' then
-		if spellID and SPELLS[spellID] then
-			local duration = GetDefaultDuration(sourceGUID, spellID)
-			self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destFlags), duration, GetTime()+duration)
-		end
-	elseif destGUID and GUIDs[destGUID] then
+	if destGUID and band(destFlags, COMBATLOG_OBJECT_REACTION_FRIENDLY) == 0 then
 		if event == 'UNIT_DIED' then
 			self:RemoveTarget(destGUID)
-		elseif spellID and SPELLS[spellID] and GUIDs[destGUID].spells[spellID] then
-			if strsub(event, 1, 17) == 'SPELL_AURA_BROKEN' then
-				self:RemoveSpell(destGUID, spellID)
-			elseif event == 'SPELL_AURA_REFRESH' then
-				local duration = GetDefaultDuration(sourceGUID, spellID)
-				self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destFlags), duration, GetTime()+duration)
-			elseif event == 'SPELL_AURA_REMOVED' then
-				self:RemoveSpell(destGUID, spellID)
+		elseif spellID and SPELLS[spellID] then
+			local isMine = band(sourceFlags, COMBATLOG_OBJECT_AFFILIATION_MINE) ~= 0
+			if isMine or prefs.onlyMine then
+				if event == 'SPELL_AURA_APPLIED' or event == 'SPELL_AURA_REFRESH' then
+					local duration = GetDefaultDuration(sourceGUID, spellID)
+					self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destFlags), duration, GetTime()+duration, isMine)
+				elseif event == 'SPELL_AURA_REMOVED' or event == 'SPELL_AURA_BROKEN_SPELL' then
+					self:RemoveSpell(destGUID, spellID)
+				end
 			end
 		end
 	end
 end
+
