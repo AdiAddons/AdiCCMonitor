@@ -7,7 +7,7 @@ All rights reserved.
 local addonName, addon = ...
 local L = addon.L
 
-LibStub('AceAddon-3.0'):NewAddon(addon, addonName, 'AceEvent-3.0')
+LibStub('AceAddon-3.0'):NewAddon(addon, addonName, 'AceEvent-3.0', 'AceConsole-3.0')
 --@debug@
 _G[addonName] = addon
 --@end-debug@
@@ -95,8 +95,8 @@ function addon:OnInitialize()
 	LibStub('AceConfig-3.0'):RegisterOptionsTable(addonName, self.GetOptions)
 	self.blizPanel = LibStub('AceConfigDialog-3.0'):AddToBlizOptions(addonName, addonName)
 
-	LibStub('AceConsole-3.0'):RegisterChatCommand("acm", "ChatCommand", true)
-	LibStub('AceConsole-3.0'):RegisterChatCommand(addonName, "ChatCommand", true)
+	self:RegisterChatCommand("acm", "ChatCommand", true)
+	self:RegisterChatCommand(addonName, "ChatCommand", true)
 end
 
 function addon:OnEnable()
