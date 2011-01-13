@@ -106,8 +106,14 @@ function addon:OnEnable()
 	self:RegisterEvent('UNIT_TARGET')
 	self:RegisterEvent('PLAYER_FOCUS_CHANGED')
 	self:RegisterEvent('UPDATE_MOUSEOVER_UNIT')
-	self:RegisterEvent('COMBAT_LOG_EVENT_UNFILTERED')
 	self:RegisterEvent('RAID_TARGET_UPDATE', 'FullRefresh')
+
+	self.RegisterCombatLogEvent(self, 'SPELL_AURA_APPLIED')
+	self.RegisterCombatLogEvent(self, 'SPELL_AURA_REFRESH', 'SPELL_AURA_APPLIED')
+	self.RegisterCombatLogEvent(self, 'SPELL_AURA_REMOVED')
+	self.RegisterCombatLogEvent(self, 'SPELL_AURA_BROKEN', 'SPELL_AURA_REMOVED')
+	self.RegisterCombatLogEvent(self, 'SPELL_AURA_BROKEN_SPELL', 'SPELL_AURA_REMOVED')
+	self.RegisterCombatLogEvent(self, 'UNIT_DIED')
 
 	--@debug@
 	self:RegisterMessage('AdiCCMonitor_SpellAdded', "SpellDebug")
@@ -124,6 +130,7 @@ function addon:OnEnable()
 end
 
 function addon:OnDisable()
+	self:UnregisterAllCombatLogEvents()
 	for guid in pairs(GUIDs) do
 		self:RemoveTarget(guid, true)
 	end
@@ -377,21 +384,48 @@ local function GetDefaultDuration(guid, spellID)
 	return guid and spellID and (playerSpellDurations[guid..'-'..spellID] or SPELLS[spellID])
 end
 
-function addon:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, spellName, _, ...)
-	if destGUID and band(destFlags, COMBATLOG_OBJECT_REACTION_FRIENDLY) == 0 then
-		if event == 'UNIT_DIED' then
-			self:RemoveTarget(destGUID)
-		elseif spellID and SPELLS[spellID] then
-			local isMine = band(sourceFlags, COMBATLOG_OBJECT_AFFILIATION_MINE) ~= 0
-			if isMine or prefs.onlyMine then
-				if event == 'SPELL_AURA_APPLIED' or event == 'SPELL_AURA_REFRESH' then
-					local duration = GetDefaultDuration(sourceGUID, spellID)
-					self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destFlags), duration, GetTime()+duration, isMine)
-				elseif event == 'SPELL_AURA_REMOVED' or event == 'SPELL_AURA_BROKEN' or event == 'SPELL_AURA_BROKEN_SPELL' then
-					self:RemoveSpell(destGUID, spellID)
-				end
-			end
-		end
+function addon:SPELL_AURA_APPLIED(_, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, spellName)
+	local isMine = band(sourceFlags, COMBATLOG_OBJECT_AFFILIATION_MINE) ~= 0
+	local duration = GetDefaultDuration(sourceGUID, spellID)
+	self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destFlags), duration, GetTime()+duration, isMine)
+end
+
+function addon:SPELL_AURA_REMOVED(_, _, _, _, destGUID, _, _, spellID)
+	self:RemoveSpell(destGUID, spellID)
+end
+
+function addon:UNIT_DIED(_, _, _, _, destGUID)
+	self:RemoveTarget(destGUID)
+end
+
+--------------------------------------------------------------------------------
+-- Combat log dispatching
+--------------------------------------------------------------------------------
+
+local methods = {}
+local combatLogCallbacks = LibStub('CallbackHandler-1.0'):New(methods, "RegisterCombatLogEvent", "UnregisterCombatLogEvent", "UnregisterAllCombatLogEvents")
+for k, v in pairs(methods) do addon[k] = v end
+
+local usedLogEvents = {}
+local AceEvent = LibStub('AceEvent-3.0')
+
+function combatLogCallbacks:OnUsed(_, event)
+	usedLogEvents[event] = true
+	AceEvent.RegisterEvent(combatLogCallbacks, 'COMBAT_LOG_EVENT_UNFILTERED', 'OnEvent')
+end
+
+function combatLogCallbacks:OnUnused(_, event)
+	usedLogEvents[event] = nil
+	if not next(usedLogEvents) then
+		AceEvent.UnregisterEvent(combatLogCallbacks, 'COMBAT_LOG_EVENT_UNFILTERED')
 	end
 end
 
+function combatLogCallbacks:OnEvent(_, _, event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, ...)
+	if destGUID and band(destFlags, COMBATLOG_OBJECT_REACTION_FRIENDLY) == 0 and usedLogEvents[event] then
+		if strsub(event, 1, 6) == 'SPELL_' and not (spellID and SPELLS[spellID] and (not prefs.onlyMine or band(sourceFlags, COMBATLOG_OBJECT_AFFILIATION_MINE) ~= 0)) then
+			return
+		end
+		self:Fire(event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, ...)
+	end
+end
