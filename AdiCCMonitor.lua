@@ -323,7 +323,7 @@ local function spellIterator(t)
 				return t.guid, t.spellID, spell
 			end
 		end
-		t.guid, t.data = next(addon.GUIDs, t.guid)
+		t.guid, t.data = next(GUIDs, t.guid)
 	until not t.guid
 	del(t)
 end
