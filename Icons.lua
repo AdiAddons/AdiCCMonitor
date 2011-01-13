@@ -248,8 +248,8 @@ function mod:CreateIcon()
 	icon:SetScript('OnSizeChanged', icon.OnSizeChanged)
 
 	icon:SetBackdrop(borderBackdrop)
-	icon:SetBackdropColor(0, 0, 0, 0)
-	icon:SetBackdropBorderColor(1, 1, 1, 1)
+	icon:SetBackdropColor(0, 0, 0, 0.5)
+	icon:SetBackdropBorderColor(0, 0, 0, 1)
 
 	local texture = icon:CreateTexture(nil, "ARTWORK")
 	texture:SetPoint("TOPLEFT", icon, "TOPLEFT", 1, -1)
@@ -278,7 +278,10 @@ function mod:CreateIcon()
 	icon.Symbol = symbol
 
 	local countdown = overlay:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
-	countdown:SetPoint("BOTTOM", 0, 2)
+	countdown:SetPoint("BOTTOMLEFT")
+	countdown:SetPoint("BOTTOMRIGHT")
+	countdown:SetJustifyH("MIDDLE")
+	countdown:SetJustifyV("BOTTOM")
 	countdown:Hide()
 	icon.Countdown = countdown
 
