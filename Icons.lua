@@ -256,7 +256,7 @@ function mod:CreateIcon()
 	local texture = icon:CreateTexture(nil, "ARTWORK")
 	texture:SetPoint("TOPLEFT", icon, "TOPLEFT", 1, -1)
 	texture:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", -1, 1)
-	texture:SetTexCoord(0.05, 0.95, 0.05, 0.95)
+	texture:SetTexCoord(5/64, 58/64, 5/64, 58/64)
 	texture:SetTexture(1,1,1,0)
 	icon.Texture = texture
 
