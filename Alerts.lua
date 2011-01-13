@@ -109,7 +109,7 @@ function mod:Alert(messageID, guid, spellID, spell)
 		message = format(L['%s is free !'], targetName)
 	end
 	if message then
-		self:Pour(message, 1, 1, 1)
+		self:Pour('<<'..message..'>>', 1, 1, 1)
 	end
 end
 
