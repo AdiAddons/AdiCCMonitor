@@ -20,3 +20,10 @@ local L = setmetatable({}, {
 addon.L = L
 
 -- %Localization: adiccmonitor
+
+--@noloc[[
+if GetLocale() == "frFR" then
+	L['%s will break free in %d secs.'] = "%s sera libre dans %d secs."
+	L['%s is free !'] = "%s est libre !"
+end
+--@noloc]]

@@ -25,21 +25,37 @@ end
 function mod:OnEnable()
 	prefs = self.db.profile
 	self:SetSinkStorage(prefs)
-	
+
 	self:RegisterMessage('AdiCCMonitor_SpellAdded')
 	self:RegisterMessage('AdiCCMonitor_SpellRemoved')
 	self:RegisterMessage('AdiCCMonitor_SpellUpdated')
 	self:RegisterMessage('AdiCCMonitor_WipeTarget', 'PlanNextUpdate')
 	self.runningTimer = nil
+
+	self:UpdateFailureListening()
 end
 
---function mod:OnDisable()
---end
+function mod:OnDisable()
+	addon.UnregisterAllCombatLogEvents(self)
+end
 
 function mod:OnConfigChanged(key, ...)
 	if key == 'delay' or (key == 'messages' and ... == 'warning') then
 		self:PlanNextUpdate()
 	end
+	self:UpdateFailureListening()
+end
+
+function mod:UpdateFailureListening()
+	if prefs.messages.failure then
+		addon.RegisterCombatLogEvent(self, 'SPELL_CAST_FAILED')
+	else
+		addon.UnregisterCombatLogEvent(self, 'SPELL_CAST_FAILED')
+	end
+end
+
+function mod:SPELL_CAST_FAILED(event, _, _, _, _, _, _, _, spellName, _, reason)
+	self:Alert('failure', spellName, reason)
 end
 
 function mod:PlanNextUpdate()
@@ -65,7 +81,7 @@ function mod:PlanNextUpdate()
 		if spell.fadingSoon ~= fadingSoon then
 			spell.fadingSoon = fadingSoon
 			if fadingSoon then
-				self:Alert('warning', guid, spellId, spell)
+				self:Alert('warning', spell.target, spell.symbol, spell.expires)
 			end
 		end
 	end
@@ -76,7 +92,7 @@ function mod:PlanNextUpdate()
 end
 
 function mod:AdiCCMonitor_SpellAdded(event, guid, spellID, spell)
-	self:Alert('applied', guid, spellID, spell)
+	self:Alert('applied', spell.target, spell.symbol, spell.expires)
 	return self:PlanNextUpdate()
 end
 
@@ -90,23 +106,30 @@ function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell)
 	if prefs.messages.early and floor(spell.expires - GetTime()) > 0 and not (prefs.messages.warning and spell.fadingSoon) then
 		messageID = "early"
 	end
-	self:Alert(messageID, guid, spellID, spell)
+	self:Alert(messageID, spell.target, spell.symbol, spell.expires)
 end
 
 local SYMBOLS = {}
 for i = 1, 8 do SYMBOLS[i] = '{'.._G["RAID_TARGET_"..i]..'}' end
 
-function mod:Alert(messageID, guid, spellID, spell)
+function mod:Alert(messageID, ...)
 	if not prefs.messages[messageID] or not IsInstance() then
 		return
 	end
-	local targetName = SYMBOLS[spell.symbol or false] or spell.target
-	local timeLeft = floor(spell.expires - GetTime() + 0.5)
+	self:Debug('Alert', messageID, ...)
 	local message
-	if messageID == 'applied' or messageID == 'warning' then
-		message = format(L['%s %d secs.'], targetName, timeLeft)
-	elseif messageID == 'removed' or messageID == 'early' then
-		message = format(L['%s is free !'], targetName)
+	if messageID == 'failure' then
+		local spell, reason = ...
+		message = spell..': '..reason
+	else
+		local target, symbol, expires = ...
+		local targetName = SYMBOLS[symbol or false] or target
+		local timeLeft = expires and floor(expires - GetTime() + 0.5)
+		if messageID == 'applied' or messageID == 'warning' then
+			message = format(L['%s will break free in %d secs.'], targetName, timeLeft)
+		elseif messageID == 'removed' or messageID == 'early' then
+			message = format(L['%s is free !'], targetName)
+		end
 	end
 	if message then
 		self:Pour('<<'..message..'>>', 1, 1, 1)
