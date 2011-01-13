@@ -236,22 +236,18 @@ function mod:IterateIcons()
 	return pairs(activeIcons)
 end
 
---[=[
 local borderBackdrop = {
-	edgeFile = [[Interface\Addons\AdiCCMonitor\white16x16]], edgeSize = 1,
+	edgeFile = [[Interface\Addons\AdiCCMonitor\media\white16x16]], edgeSize = 1,
 	insets = {left = 0, right = 0, top = 0, bottom = 0},
 }
---]=]
 
 function mod:CreateIcon()
 	local icon = setmetatable(CreateFrame("Frame", nil, anchor), iconMeta)
 	icon:SetScript('OnSizeChanged', icon.OnSizeChanged)
 
-	--[[
 	icon:SetBackdrop(borderBackdrop)
 	icon:SetBackdropColor(0, 0, 0, 0)
 	icon:SetBackdropBorderColor(1, 1, 1, 1)
-	--]]
 
 	local texture = icon:CreateTexture(nil, "ARTWORK")
 	texture:SetPoint("TOPLEFT", icon, "TOPLEFT", 1, -1)
