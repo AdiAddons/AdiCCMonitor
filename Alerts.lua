@@ -26,7 +26,7 @@ function mod:OnEnable()
 	prefs = self.db.profile
 	self:RegisterMessage('AdiCCMonitor_SpellAdded')
 	self:RegisterMessage('AdiCCMonitor_SpellRemoved')
-	self:RegisterMessage('AdiCCMonitor_SpellUpdated', 'PlanNextUpdate')
+	self:RegisterMessage('AdiCCMonitor_SpellUpdated')
 	self:RegisterMessage('AdiCCMonitor_WipeTarget', 'PlanNextUpdate')
 	self.runningTimer = nil
 end
@@ -78,9 +78,17 @@ function mod:AdiCCMonitor_SpellAdded(event, guid, spellID, spell)
 	return self:PlanNextUpdate()
 end
 
-function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell)
-	self:Alert('removed', guid, spellID, spell)
+function mod:AdiCCMonitor_SpellUpdated(event, guid, spellID, spell)
 	return self:PlanNextUpdate()
+end
+
+function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell)
+	self:PlanNextUpdate()
+	local messageID = "removed"
+	if prefs.messages.early and floor(spell.expires - GetTime()) > 0 and not (prefs.messages.warning and spell.fadingSoon) then
+		messageID = "early"
+	end
+	self:Alert(messageID, guid, spellID, spell)
 end
 
 local SYMBOLS = {}
@@ -98,7 +106,7 @@ function mod:Alert(messageID, guid, spellID, spell)
 	local message
 	if messageID == 'applied' or messageID == 'warning' then
 		message = format(L['%s %d secs.'], targetName, timeLeft)
-	elseif messageID == 'removed' then
+	elseif messageID == 'removed' or messageID == 'early' then
 		message = format(L['%s is free !'], targetName)
 	end
 	if message then
@@ -123,6 +131,7 @@ function mod:GetOptions()
 					applied = L['Applied'],
 					removed = L['Removed'],
 					warning = L['About to end'],
+					early = L['Broken early'],
 				},
 				order = 10,
 			},
