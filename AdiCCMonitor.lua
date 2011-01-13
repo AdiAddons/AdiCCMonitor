@@ -95,6 +95,8 @@ function addon:OnInitialize()
 	LibStub('AceConfig-3.0'):RegisterOptionsTable(addonName, self.GetOptions)
 	self.blizPanel = LibStub('AceConfigDialog-3.0'):AddToBlizOptions(addonName, addonName)
 
+	LibStub('AceConsole-3.0'):RegisterChatCommand("acm", "ChatCommand", true)
+	LibStub('AceConsole-3.0'):RegisterChatCommand(addonName, "ChatCommand", true)
 end
 
 function addon:OnEnable()
@@ -145,17 +147,8 @@ function addon:OnConfigChanged(key, ...)
 	end
 end
 
-function addon:FullRefresh()
-	self:RefreshFromUnit('target')
-	self:RefreshFromUnit('focus')
-	self:RefreshFromUnit('mouseover')
-	local prefix, num = "raidtarget", GetNumRaidMembers()
-	if num == 0 then
-		prefix, num = "partytarget", GetNumPartyMembers()
-	end
-	for i = 1, num do
-		self:RefreshFromUnit(prefix..num)
-	end
+function addon:ChatCommand()
+	InterfaceOptionsFrame_OpenToCategory(self.blizPanel)
 end
 
 --@debug@
@@ -298,6 +291,19 @@ function addon:RefreshFromUnit(unit)
 		if not seen[spellID] then
 			self:RemoveSpell(guid, spellID)
 		end
+	end
+end
+
+function addon:FullRefresh()
+	self:RefreshFromUnit('target')
+	self:RefreshFromUnit('focus')
+	self:RefreshFromUnit('mouseover')
+	local prefix, num = "raidtarget", GetNumRaidMembers()
+	if num == 0 then
+		prefix, num = "partytarget", GetNumPartyMembers()
+	end
+	for i = 1, num do
+		self:RefreshFromUnit(prefix..num)
 	end
 end
 
