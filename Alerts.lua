@@ -7,7 +7,7 @@ All rights reserved.
 local addonName, addon = ...
 local L = addon.L
 
-local mod = addon:NewModule('Alerts', 'AceEvent-3.0', 'AceTimer-3.0')
+local mod = addon:NewModule('Alerts', 'AceEvent-3.0', 'AceTimer-3.0', 'LibSink-2.0')
 
 local prefs
 
@@ -24,6 +24,8 @@ end
 
 function mod:OnEnable()
 	prefs = self.db.profile
+	self:SetSinkStorage(prefs)
+	
 	self:RegisterMessage('AdiCCMonitor_SpellAdded')
 	self:RegisterMessage('AdiCCMonitor_SpellRemoved')
 	self:RegisterMessage('AdiCCMonitor_SpellUpdated')
@@ -95,9 +97,6 @@ local SYMBOLS = {}
 for i = 1, 8 do SYMBOLS[i] = '{'.._G["RAID_TARGET_"..i]..'}' end
 
 function mod:Alert(messageID, guid, spellID, spell)
-	--@not-debug@--
-	if not IsInInstance() then return end
-	--@end-not-debug@--
 	if not prefs.messages[messageID] then
 		return
 	end
@@ -110,11 +109,13 @@ function mod:Alert(messageID, guid, spellID, spell)
 		message = format(L['%s is free !'], targetName)
 	end
 	if message then
-		SendChatMessage(message, "SAY")
+		self:Pour(message, 1, 1, 1)
 	end
 end
 
 function mod:GetOptions()
+	local sinkOpts = self:GetSinkAce3OptionsDataTable()
+	sinkOpts.order = 30,
 	return {
 		name = L['Alerts'],
 		type = 'group',
@@ -145,6 +146,7 @@ function mod:GetOptions()
 				disabled = function(info) return info.handler:IsDisabled(info) or not prefs.messages.warning end,
 				order = 20,
 			},
+			output = sinkOpts
 		},
 	}
 end
