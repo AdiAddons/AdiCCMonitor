@@ -381,7 +381,7 @@ function addon:COMBAT_LOG_EVENT_UNFILTERED(_, _, event, sourceGUID, sourceName, 
 				if event == 'SPELL_AURA_APPLIED' or event == 'SPELL_AURA_REFRESH' then
 					local duration = GetDefaultDuration(sourceGUID, spellID)
 					self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destFlags), duration, GetTime()+duration, isMine)
-				elseif event == 'SPELL_AURA_REMOVED' or event == 'SPELL_AURA_BROKEN_SPELL' then
+				elseif event == 'SPELL_AURA_REMOVED' or event == 'SPELL_AURA_BROKEN' or event == 'SPELL_AURA_BROKEN_SPELL' then
 					self:RemoveSpell(destGUID, spellID)
 				end
 			end
