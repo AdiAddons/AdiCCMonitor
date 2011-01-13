@@ -97,7 +97,7 @@ local SYMBOLS = {}
 for i = 1, 8 do SYMBOLS[i] = '{'.._G["RAID_TARGET_"..i]..'}' end
 
 function mod:Alert(messageID, guid, spellID, spell)
-	if not prefs.messages[messageID] then
+	if not prefs.messages[messageID] or not IsInstance() then
 		return
 	end
 	local targetName = SYMBOLS[spell.symbol or false] or spell.target
