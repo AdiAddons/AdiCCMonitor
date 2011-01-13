@@ -1,4 +1,7 @@
--
-    type: textile
-    input-file: README.textile
-    output-page: Main
+AdiCCMonitor helps you keeping track of group crowd-control spells.
+
+It detects your own crowd-control spells and those of your party/raids and can provide feedbacks in two ways :
+- icons: a bar of icons showing running spells, their target symbols and the remaining time.
+- alerts: messages that can be sent to any channel (using LibSink-2.0) for certain events: spell applied/ended/broken, cast failures and about-to-end warning. Note: *alerts are only sent while in instance*.
+
+AdiCCMonitor already comes with a bunch of options. Use /adiccmonitor, /acm or Interface options to open AdiCCMonitor configuration panel.
