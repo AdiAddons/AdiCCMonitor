@@ -9,6 +9,8 @@ local L = addon.L
 
 local mod = addon:NewModule('Icons', 'AceEvent-3.0', 'LibMovable-1.0')
 
+local ICON_SPACING = 2
+
 local DEFAULT_SETTINGS = {
 	profile = {
 		iconSize = 32,
@@ -64,9 +66,9 @@ end
 function mod:ApplySettings(fullRefresh)
 
 	if prefs.vertical then
-		anchor:SetSize(prefs.iconSize, prefs.iconSize * prefs.numIcons)
+		anchor:SetSize(prefs.iconSize, (ICON_SPACING + prefs.iconSize) * prefs.numIcons - ICON_SPACING)
 	else
-		anchor:SetSize(prefs.iconSize * prefs.numIcons, prefs.iconSize)
+		anchor:SetSize((ICON_SPACING + prefs.iconSize) * prefs.numIcons - ICON_SPACING, prefs.iconSize)
 	end
 
 	anchor:SetAlpha(prefs.alpha)
@@ -161,8 +163,8 @@ function mod:Layout()
 			icon:SetSize(size, size)
 			icon:SetPoint(point, anchor, point, x, y)
 			icon:Show()
-			x = x + dx * size
-			y = y + dy * size
+			x = x + dx * (size + ICON_SPACING)
+			y = y + dy * (size + ICON_SPACING)
 		else
 			icon:Hide()
 		end
