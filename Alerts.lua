@@ -115,7 +115,8 @@ end
 
 function mod:GetOptions()
 	local sinkOpts = self:GetSinkAce3OptionsDataTable()
-	sinkOpts.order = 30,
+	sinkOpts.order = 30
+	sinkOpts.inline = true
 	return {
 		name = L['Alerts'],
 		type = 'group',
@@ -132,6 +133,7 @@ function mod:GetOptions()
 					applied = L['Applied'],
 					removed = L['Removed'],
 					warning = L['About to end'],
+					failure = L['Failures'],
 					early = L['Broken early'],
 				},
 				order = 10,
@@ -145,8 +147,8 @@ function mod:GetOptions()
 				step = 1,
 				disabled = function(info) return info.handler:IsDisabled(info) or not prefs.messages.warning end,
 				order = 20,
-			},
-			output = sinkOpts
+			},			
+			output = sinkOpts,
 		},
 	}
 end
