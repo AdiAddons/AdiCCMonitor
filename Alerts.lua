@@ -113,7 +113,7 @@ local SYMBOLS = {}
 for i = 1, 8 do SYMBOLS[i] = '{'.._G["RAID_TARGET_"..i]..'}' end
 
 function mod:Alert(messageID, ...)
-	if not prefs.messages[messageID] or not IsInstance() then
+	if not prefs.messages[messageID] or not IsInInstance() then
 		return
 	end
 	self:Debug('Alert', messageID, ...)
