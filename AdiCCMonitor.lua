@@ -347,9 +347,8 @@ function addon:UPDATE_MOUSEOVER_UNIT(event)
 	if not UnitIsUnit('mouseover', 'target') and not UnitIsUnit('mouseover', 'focus') then
 		local guid, now = UnitGUID("mouseover"), GetTime()
 		if guid and (lastMouseoverGUID ~= guid or (now or 0) - lastMouseoverTime >= 1 or GetRaidTargetIndex("mouseover") ~= guidSymbols[guid]) then
-				lastMouseoverGUID, lastMouseoverTime = guid, now
-				return self:RefreshFromUnit("mouseover")
-			end
+			lastMouseoverGUID, lastMouseoverTime = guid, now
+			return self:RefreshFromUnit("mouseover")
 		end
 	end
 end
