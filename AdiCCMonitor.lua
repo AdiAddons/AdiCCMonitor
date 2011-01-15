@@ -34,6 +34,7 @@ addon:SetDefaultModulePrototype{Debug = addon.Debug}
 
 local prefs
 local GUIDs = {}
+local guidSymbols = {}
 local playerSpellDurations = {}
 
 --@debug@
@@ -225,9 +226,6 @@ function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expire
 		self:Debug('Ignore inaccurate data for', spellID, 'on', guid)
 		return
 	end
-	if symbol == false then
-		symbol = spell.symbol
-	end
 	if spell.name ~= name or spell.target ~= target or spell.symbol ~= symbol or spell.accurate ~= accurate or spell.duration ~= duration or spell.expires ~= expires or self.isMine ~= isMine then
 		spell.name = name
 		spell.target = target
@@ -257,6 +255,7 @@ end
 
 function addon:RemoveTarget(guid, silent)
 	local data = GUIDs[guid]
+	guidSymbols[guid] = nil
 	if data then
 		for id in pairs(data.spells) do
 			self:RemoveSpell(guid, id, true)
@@ -279,6 +278,7 @@ function addon:RefreshFromUnit(unit)
 	local filter = prefs.onlyMine and "PLAYER" or ""
 	local targetName = UnitName(unit)
 	local symbol = GetRaidTargetIndex(unit)
+	guidSymbols[guid] = symbol
 	local index = 0
 	repeat
 		index = index + 1
@@ -346,9 +346,10 @@ local lastMouseoverGUID, lastMouseoverTime = nil, 0
 function addon:UPDATE_MOUSEOVER_UNIT(event)
 	if not UnitIsUnit('mouseover', 'target') and not UnitIsUnit('mouseover', 'focus') then
 		local guid, now = UnitGUID("mouseover"), GetTime()
-		if lastMouseoverGUID ~= guid or (now or 0) - lastMouseoverTime >= 1 then
-			lastMouseoverGUID, lastMouseoverTime = guid, now
-			return self:RefreshFromUnit("mouseover")
+		if guid and (lastMouseoverGUID ~= guid or (now or 0) - lastMouseoverTime >= 1 or GetRaidTargetIndex("mouseover") ~= guidSymbols[guid]) then
+				lastMouseoverGUID, lastMouseoverTime = guid, now
+				return self:RefreshFromUnit("mouseover")
+			end
 		end
 	end
 end
@@ -376,8 +377,8 @@ for i = 1, 8 do
 	SYMBOLS[flag] = i
 end
 
-local function GetSymbol(flags)
-	return SYMBOLS[band(flags, SYMBOL_MASK)] or false
+local function GetSymbol(guid, flags)
+	return SYMBOLS[band(flags, SYMBOL_MASK)] or guidSymbols[guid]
 end
 
 local function GetDefaultDuration(guid, spellID)
@@ -387,7 +388,7 @@ end
 function addon:SPELL_AURA_APPLIED(_, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, spellName)
 	local isMine = band(sourceFlags, COMBATLOG_OBJECT_AFFILIATION_MINE) ~= 0
 	local duration = GetDefaultDuration(sourceGUID, spellID)
-	self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destFlags), duration, GetTime()+duration, isMine)
+	self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destGUID, destFlags), duration, GetTime()+duration, isMine)
 end
 
 function addon:SPELL_AURA_REMOVED(_, _, _, _, destGUID, _, _, spellID)
