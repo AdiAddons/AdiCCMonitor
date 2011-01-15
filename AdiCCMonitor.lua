@@ -423,9 +423,17 @@ end
 
 function combatLogCallbacks:OnEvent(_, _, event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, ...)
 	if destGUID and band(destFlags, COMBATLOG_OBJECT_REACTION_FRIENDLY) == 0 and usedLogEvents[event] then
-		if strsub(event, 1, 6) == 'SPELL_' and not (spellID and SPELLS[spellID] and (not prefs.onlyMine or band(sourceFlags, COMBATLOG_OBJECT_AFFILIATION_MINE) ~= 0)) then
-			return
+		if strsub(event, 1, 6) == 'SPELL_' then
+			if not spellID or not SPELLS[spellID] then
+				return
+			elseif prefs.onlyMine then
+				if band(sourceFlags, COMBATLOG_OBJECT_AFFILIATION_MINE) == 0 then
+					return
+				end
+			elseif band(sourceFlags, COMBATLOG_OBJECT_AFFILIATION_OUTSIDER) ~= 0 then
+				return
+			end
 		end
-		self:Fire(event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, ...)
+		return self:Fire(event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, ...)
 	end
 end
