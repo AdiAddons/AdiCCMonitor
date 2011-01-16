@@ -105,7 +105,7 @@ function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell, brokenByName
 	local messageID = "removed"
 	if brokenByName and prefs.messages.early and not (prefs.messages.warning and spell.fadingSoon) then
 		local raidID = UnitInRaid(brokenByName)
-		local role = raidID and select(10, select(10, GetRaidRosterInfo(raidID)) or UnitGroupRolesAssigned(brokenByName)
+		local role = raidID and select(10, GetRaidRosterInfo(raidID)) or UnitGroupRolesAssigned(brokenByName)
 		if role ~= "TANK" then
 			messageID = "early"
 		end
