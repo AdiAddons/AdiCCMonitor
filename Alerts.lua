@@ -100,13 +100,13 @@ function mod:AdiCCMonitor_SpellUpdated(event, guid, spellID, spell)
 	return self:PlanNextUpdate()
 end
 
-function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell)
+function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell, brokenByName)
 	self:PlanNextUpdate()
 	local messageID = "removed"
-	if prefs.messages.early and floor(spell.expires - GetTime()) > 0 and not (prefs.messages.warning and spell.fadingSoon) then
-		messageID = "early"
+	if brokenByName and prefs.messages.early and not (prefs.messages.warning and spell.fadingSoon) then
+			messageID = "early"
 	end
-	self:Alert(messageID, spell.target, spell.symbol, spell.expires)
+	self:Alert(messageID, spell.target, spell.symbol, spell.expires, brokenByName)
 end
 
 local SYMBOLS = {}
@@ -122,13 +122,15 @@ function mod:Alert(messageID, ...)
 		local spell, reason = ...
 		message = spell..': '..reason
 	else
-		local target, symbol, expires = ...
+		local target, symbol, expires, moreArg = ...
 		local targetName = SYMBOLS[symbol or false] or target
 		local timeLeft = expires and floor(expires - GetTime() + 0.5)
 		if messageID == 'applied' or messageID == 'warning' then
 			message = format(L['%s will break free in %d secs.'], targetName, timeLeft)
-		elseif messageID == 'removed' or messageID == 'early' then
+		elseif messageID == 'removed' then
 			message = format(L['%s is free !'], targetName)
+		elseif messageID == 'early' then
+			message = format(L['%s has been freed by %s !'], targetName, moreArg)
 		end
 	end
 	if message then
