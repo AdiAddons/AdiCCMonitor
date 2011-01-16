@@ -238,12 +238,12 @@ function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expire
 	end
 end
 
-function addon:RemoveSpell(guid, spellID, silent, broken, brokenByGUID, brokenByName)
+function addon:RemoveSpell(guid, spellID, silent, brokenByName)
 	local data = GUIDs[guid]
 	local spell = data and data.spells[spellID]
 	if spell then
 		if not silent then
-			self:SendMessage('AdiCCMonitor_SpellRemoved', guid, spellID, spell, broken, brokenByGUID, brokenByName)
+			self:SendMessage('AdiCCMonitor_SpellRemoved', guid, spellID, spell, brokenByName)
 		end
 		data.spells[spellID] = del(spell)
 		if not next(data.spells) then
@@ -391,7 +391,7 @@ function addon:SPELL_AURA_APPLIED(_, sourceGUID, sourceName, sourceFlags, destGU
 end
 
 function addon:SPELL_AURA_REMOVED(event, sourceGUID, sourceName, _, destGUID, _, _, spellID)
-	self:RemoveSpell(destGUID, spellID, false, strmatch(event, 'BROKEN'), sourceGUID, sourceName)
+	self:RemoveSpell(destGUID, spellID, false, strmatch(event, 'BROKEN') and sourceName or nil)
 end
 
 function addon:UNIT_DIED(_, _, _, _, destGUID)
