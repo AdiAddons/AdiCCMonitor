@@ -27,6 +27,8 @@ local DEFAULT_SETTINGS = {
 		showSymbol = true,
 		showCountdown = true,
 		showCooldown = true,
+		blinking = true,
+		blinkingThreshold = 5,
 	}
 }
 
@@ -203,19 +205,19 @@ end
 -- Anchor widget
 --------------------------------------------------------------------------------
 
-local runningCountdowns = {}
 local delay = 0
+local UPDATE_PERIOD = 0.05
 
 local function UpdateCountdowns(self, elapsed)
-	delay = delay - elapsed
-	if delay > 0 then return end
-	delay = 0.09
+	delay = delay + elapsed
+	if delay < UPDATE_PERIOD then return end
 	local now = GetTime()
-	for icon in pairs(runningCountdowns) do
+	for icon in pairs(activeIcons) do
 		if icon:IsVisible() then
-			icon:UpdateCountdown(now)
+			icon:OnUpdate(now)
 		end
 	end
+	delay = 0
 end
 
 function mod:CreateAnchor()
@@ -301,6 +303,7 @@ end
 
 function iconProto:Release()
 	self.guid, self.spellID, self.symbol, self.duration, self.expires = nil
+	self:SetAlpha(prefs.alpha)
 	self:Hide()
 	activeIcons[self] = nil
 	iconHeap[self] = true
@@ -334,17 +337,33 @@ function iconProto:UpdateWidgets()
 	else
 		self.Cooldown:Hide()
 	end
-	if prefs.showCountdown and self:UpdateCountdown(GetTime()) then
+	self.showCountdown = prefs.showCountdown and self:UpdateCountdown(GetTime())
+	if self.showCountdown then
 		self.Countdown:Show()
-		runningCountdowns[self] = true
 	else
 		self.Countdown:Hide()
-		runningCountdowns[self] = nil
+	end
+end
+
+local cos, PI2 = math.cos, math.pi * 2
+function iconProto:OnUpdate(now)
+	if now > self.expires then
+		return self:Release()
+	end
+	if self.showCountdown then
+		self:UpdateCountdown(now)
+	end
+	local alpha = prefs.alpha
+	if prefs.blinking and now > self.expires - prefs.blinkingThreshold then		
+		alpha = alpha * (0.6 + 0.4 * cos(now * PI2))
+	end
+	if alpha ~= self:GetAlpha() then
+		self:SetAlpha(alpha)
 	end
 end
 
 function iconProto:UpdateCountdown(now)
-	local timeLeft = self.expires and (self.expires - now) or 0
+	local timeLeft = self.expires - now
 	if timeLeft > 0 then
 		self.Countdown:SetFormattedText("%d", ceil(timeLeft))
 		return true
@@ -416,6 +435,19 @@ function mod:GetOptions()
 				type = 'toggle',
 				order = 70,
 			},
+			blinking = {
+				name = L['Enable blinking'],
+				type = 'toggle',
+				order = 80,
+			},
+			blinkingThreshold = {
+				name = L['Blinking threshold (sec.)'],
+				type = 'range',
+				min = 1,
+				max = 15,
+				step = 0.5,
+				order = 90,
+			},
 			lockAnchor = {
 				name = function() return self:AreMovablesLocked() and L['Unlock anchor'] or L['Lock anchor'] end,
 				type = 'execute',
@@ -426,13 +458,13 @@ function mod:GetOptions()
 						self:LockMovables()
 					end
 				end,
-				order = 80,
+				order = 100,
 			},
 			resetPosition = {
 				name = L['Reset position'],
 				type = 'execute',
 				func = function() self:ResetMovableLayout() end,
-				order = 90,
+				order = 110,
 			},
 		},
 	}
