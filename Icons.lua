@@ -125,13 +125,13 @@ function mod:UpdateSpell(guid, spellID, spell)
 	self:AddSpell(guid, spellID, spell)
 end
 
-function mod:RemoveSpell(guid, spellID, instant)
+function mod:RemoveSpell(guid, spellID, instant, broken)
 	local now = GetTime()
 	for icon in self:IterateIcons() do
 		if icon.guid == guid and icon.spellID == spellID then
 			if instant then
 				icon:Release()
-			elseif icon.expires and icon.expires - now > prefs.blinkingThreshold then
+			elseif broken then -- icon.expires and icon.expires - now > prefs.blinkingThreshold then
 				icon.Texture:SetVertexColor(1, 0, 0, 1)
 				icon:FadeOut(2)
 			else
@@ -195,8 +195,8 @@ function mod:AdiCCMonitor_SpellUpdated(event, guid, spellID, spell)
 	self:Layout()
 end
 
-function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell)
-	self:RemoveSpell(guid, spellID)
+function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell, broken)
+	self:RemoveSpell(guid, spellID, nil, broken)
 	self:Layout()
 end
 
