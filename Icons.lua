@@ -125,10 +125,18 @@ function mod:UpdateSpell(guid, spellID, spell)
 	self:AddSpell(guid, spellID, spell)
 end
 
-function mod:RemoveSpell(guid, spellID)
+function mod:RemoveSpell(guid, spellID, instant)
+	local now = GetTime()
 	for icon in self:IterateIcons() do
 		if icon.guid == guid and icon.spellID == spellID then
-			icon:Release()
+			if instant then
+				icon:Release()
+			elseif icon.expires and icon.expires - now > prefs.blinkingThreshold then
+				icon.Texture:SetVertexColor(1, 0, 0, 1)
+				icon:FadeOut(2)
+			else
+				icon:FadeOut(1)
+			end
 		end
 	end
 end
@@ -195,7 +203,7 @@ end
 function mod:AdiCCMonitor_WipeTarget(event, guid)
 	for icon in self:IterateIcons() do
 		if icon.guid == guid then
-			icon:Release()
+			icon:FadeOut(1)
 		end
 	end
 	self:Layout()
@@ -303,13 +311,16 @@ end
 
 function iconProto:Release()
 	self.guid, self.spellID, self.symbol, self.duration, self.expires = nil
+	self.fadingOut = nil
 	self:SetAlpha(prefs.alpha)
+	self.Texture:SetVertexColor(1, 1, 1, 1)
 	self:Hide()
 	activeIcons[self] = nil
 	iconHeap[self] = true
 end
 
 function iconProto:Update(guid, spellID, symbol, duration, expires, isMine)
+	self:StopFadingOut()
 	self.guid = guid
 	if self.spellID ~= spellID or self.symbol ~= symbol or self.duration ~= duration or self.expires ~= expires or self.isMine ~= isMine then
 		self.spellID, self.symbol, self.duration, self.expires, self.isMine = spellID, symbol, duration, expires, isMine
@@ -337,8 +348,7 @@ function iconProto:UpdateWidgets()
 	else
 		self.Cooldown:Hide()
 	end
-	self.showCountdown = prefs.showCountdown and self:UpdateCountdown(GetTime())
-	if self.showCountdown then
+	if prefs.showCountdown and self:UpdateCountdown(GetTime()) then
 		self.Countdown:Show()
 	else
 		self.Countdown:Hide()
@@ -347,18 +357,45 @@ end
 
 local cos, PI2 = math.cos, math.pi * 2
 function iconProto:OnUpdate(now)
-	if now > self.expires then
-		return self:Release()
-	end
-	if self.showCountdown then
-		self:UpdateCountdown(now)
-	end
 	local alpha = prefs.alpha
-	if prefs.blinking and now > self.expires - prefs.blinkingThreshold then		
-		alpha = alpha * (0.6 + 0.4 * cos(now * PI2))
+	if self.fadingOut then
+		local timeLeft = self.fadingEnd - now
+		if timeLeft > 0 then
+			alpha = alpha * timeLeft / self.fadingDelay
+		else
+			return self:Release()
+		end
+	elseif now > self.expires then
+		self:FadeOut(1)
+	else
+		if prefs.blinking and now > self.expires - prefs.blinkingThreshold then		
+			alpha = alpha * (0.55 + 0.45 * cos(now * PI2))
+		end
+		if self.Countdown:IsShown() then
+			self:UpdateCountdown(now)
+		end
 	end
 	if alpha ~= self:GetAlpha() then
 		self:SetAlpha(alpha)
+	end
+end
+
+function iconProto:FadeOut(delay)
+	if not self.fadingOut then
+		self.fadingOut = true
+		self.fadingDelay = delay
+		self.fadingEnd = GetTime() + delay
+		self.Countdown:Hide()
+		self.Cooldown:Hide()
+	end
+end
+
+function iconProto:StopFadingOut()
+	if self.fadingOut then
+		self.fadingOut = nil
+		self:SetAlpha(prefs.alpha)
+		self.Texture:SetVertexColor(1, 1, 1, 1)
+		self:UpdateWidgets()
 	end
 end
 
@@ -392,19 +429,22 @@ function mod:GetOptions()
 		args = {
 			iconSize = {
 				name = L['Icon size'],
+				desc = L['The size in pixels of icons displaying your spells. Spells of other players are 20% smaller.'],
 				type = 'range',
-				min = 32,
+				min = 16,
 				max = 64,
 				step = 1,
 				order = 10,
 			},
 			vertical = {
 				name = L['Vertical'],
+				desc = L['The orientation of the icon bar.'],
 				type = 'toggle',
 				order = 20,
 			},
 			numIcons = {
 				name = L['Number of icons'],
+				desc = L['The maximum number of icons to show. '],
 				type = 'range',
 				min = 1,
 				max = 15,
@@ -413,6 +453,7 @@ function mod:GetOptions()
 			},
 			alpha = {
 				name = L['Opacity'],
+				desc = L['The opacity of all icons. 100% means full opaque while 0% means fully transparent.'],
 				type = 'range',
 				isPercent = true,
 				min = 0.10,
@@ -422,26 +463,31 @@ function mod:GetOptions()
 			},
 			showSymbol = {
 				name = L['Show symbol'],
+				desc = L['Display the target raid marker.'],
 				type = 'toggle',
 				order = 50,
 			},
 			showCountdown = {
 				name = L['Show countdown'],
+				desc = L['Numerical display of time left.'],
 				type = 'toggle',
 				order = 60,
 			},
 			showCooldown = {
 				name = L['Show cooldown model'],
+				desc = L['Graphical display of time left.'],
 				type = 'toggle',
 				order = 70,
 			},
 			blinking = {
 				name = L['Enable blinking'],
+				desc = L['Icons start blinking when the spell is about to end.'],
 				type = 'toggle',
 				order = 80,
 			},
 			blinkingThreshold = {
 				name = L['Blinking threshold (sec.)'],
+				desc = L['The remaining time threshold, below which the icon starts to blink.'],
 				type = 'range',
 				min = 1,
 				max = 15,
@@ -462,6 +508,7 @@ function mod:GetOptions()
 			},
 			resetPosition = {
 				name = L['Reset position'],
+				desc = L['Move the anchor back to its default position.'],
 				type = 'execute',
 				func = function() self:ResetMovableLayout() end,
 				order = 110,
