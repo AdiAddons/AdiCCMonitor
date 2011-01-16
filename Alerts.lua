@@ -92,7 +92,7 @@ function mod:PlanNextUpdate()
 end
 
 function mod:AdiCCMonitor_SpellAdded(event, guid, spellID, spell)
-	self:Alert('applied', spell.target, spell.symbol, spell.expires)
+	self:Alert('applied', spell.target, spell.symbol, spell.expires, spell.name)
 	return self:PlanNextUpdate()
 end
 
@@ -125,8 +125,10 @@ function mod:Alert(messageID, ...)
 		local target, symbol, expires, moreArg = ...
 		local targetName = SYMBOLS[symbol or false] or target
 		local timeLeft = expires and floor(expires - GetTime() + 0.5)
-		if messageID == 'applied' or messageID == 'warning' then
-			message = format(L['%s will break free in %d secs.'], targetName, timeLeft)
+		if messageID == 'applied' then
+			message = format(L['%s is affected by %s, lasting %d seconds.'], targetName, moreArg, timeLeft)
+		elseif messageID == 'warning' then
+			message = format(L['%s will break free in %d seconds.'], targetName, timeLeft)
 		elseif messageID == 'removed' then
 			message = format(L['%s is free !'], targetName)
 		elseif messageID == 'early' then
