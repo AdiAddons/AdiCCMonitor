@@ -363,7 +363,8 @@ function iconProto:OnUpdate(now)
 		if timeLeft > 0 then
 			alpha = alpha * timeLeft / self.fadingDelay
 		else
-			return self:Release()
+			self:Release()
+			mod:Layout()
 		end
 	elseif now > self.expires then
 		self:FadeOut(1)
