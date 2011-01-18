@@ -50,13 +50,19 @@ end
 function mod:UpdateFailureListening()
 	if prefs.messages.failure then
 		addon.RegisterCombatLogEvent(self, 'SPELL_CAST_FAILED')
+		addon.RegisterCombatLogEvent(self, 'SPELL_MISSED')
 	else
 		addon.UnregisterCombatLogEvent(self, 'SPELL_CAST_FAILED')
+		addon.UnregisterCombatLogEvent(self, 'SPELL_MISSED')
 	end
 end
 
 function mod:SPELL_CAST_FAILED(event, _, _, _, _, _, _, _, spellName, _, reason)
 	self:Alert('failure', spellName, reason)
+end
+
+function mod:SPELL_MISSED(event, _, _, _, _, _, _, _, spellName, _, missType)
+	self:Alert('failure', spellName, _G[missType] or missType)
 end
 
 function mod:PlanNextUpdate()
