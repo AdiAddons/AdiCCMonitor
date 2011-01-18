@@ -15,6 +15,7 @@ local DEFAULT_SETTINGS = {
 	profile = {
 		messages = { ['*'] = true },
 		delay = 5,
+		numericalSymbols = (GetLocale() == "deDE"),
 	}
 }
 
@@ -113,8 +114,9 @@ function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell, brokenByName
 	self:Alert(messageID, spell.target, spell.symbol, spell.expires, brokenByName)
 end
 
-local SYMBOLS = {}
-for i = 1, 8 do SYMBOLS[i] = '{'.._G["RAID_TARGET_"..i]..'}' end
+local SYMBOLS = { textual = {}, numerical = {} }
+for i = 1, 8 do SYMBOLS.textual[i] = '{'.._G["RAID_TARGET_"..i]..'}' end
+for i = 1, 8 do SYMBOLS.numerical[i] = '{rt'..i..'}' end
 
 function mod:Alert(messageID, ...)
 	if not prefs.messages[messageID] or not IsInInstance() then
@@ -127,7 +129,7 @@ function mod:Alert(messageID, ...)
 		message = spell..': '..reason
 	else
 		local target, symbol, expires, moreArg = ...
-		local targetName = SYMBOLS[symbol or false] or target
+		local targetName = SYMBOLS[prefs.numericalSymbols and "numerical" or "textual"][symbol or false] or target
 		local timeLeft = expires and floor(expires - GetTime() + 0.5)
 		if messageID == 'applied' then
 			message = format(L['%s is affected by %s, lasting %d seconds.'], targetName, moreArg, timeLeft)
@@ -146,7 +148,7 @@ end
 
 function mod:GetOptions()
 	local sinkOpts = self:GetSinkAce3OptionsDataTable()
-	sinkOpts.order = 30
+	sinkOpts.order = 40
 	sinkOpts.inline = true
 	return {
 		name = L['Alerts'],
@@ -179,6 +181,12 @@ function mod:GetOptions()
 				disabled = function(info) return info.handler:IsDisabled(info) or not prefs.messages.warning end,
 				order = 20,
 			},			
+			numericalSymbols = {
+				name = L['Alternative symbol strings'],
+				desc = format(L["Use this option if %s or %s are not displayed as icons in chat frames. AdiCCMonitor will use {rt1}..{rt8} instead. Note: stock chat bubbles do not display any of them anyway."], SYMBOLS.textual[1], SYMBOLS.textual[8]),
+				type = "toggle",
+				order = 30,
+			},
 			output = sinkOpts,
 		},
 	}
