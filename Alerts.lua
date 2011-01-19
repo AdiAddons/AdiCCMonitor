@@ -26,34 +26,37 @@ end
 function mod:OnEnable()
 	prefs = self.db.profile
 	self:SetSinkStorage(prefs)
-
-	self:RegisterMessage('AdiCCMonitor_SpellAdded')
-	self:RegisterMessage('AdiCCMonitor_SpellRemoved')
-	self:RegisterMessage('AdiCCMonitor_SpellUpdated')
-	self:RegisterMessage('AdiCCMonitor_WipeTarget', 'PlanNextUpdate')
-	self.runningTimer = nil
-
-	self:UpdateFailureListening()
+	self.runningTimer = nil	
+	self:RegisterMessage('PLAYER_ENTERING_WORLD', 'UpdateListeners')
+	self:UpdateListeners()
 end
 
 function mod:OnDisable()
-	addon.UnregisterAllCombatLogEvents(self)
+	self:UpdateListeners()	
 end
 
 function mod:OnConfigChanged(key, ...)
-	if key == 'delay' or (key == 'messages' and ... == 'warning') then
-		self:PlanNextUpdate()
-	end
-	self:UpdateFailureListening()
+	self:UpdateListeners()
 end
 
-function mod:UpdateFailureListening()
-	if prefs.messages.failure then
-		addon.RegisterCombatLogEvent(self, 'SPELL_CAST_FAILED')
-		addon.RegisterCombatLogEvent(self, 'SPELL_MISSED')
+function mod:UpdateListeners()
+	if self:IsEnabled() and (self.testing or IsInInstance()) and next(prefs.messages) then
+		self:RegisterMessage('AdiCCMonitor_SpellAdded')
+		self:RegisterMessage('AdiCCMonitor_SpellRemoved')
+		self:RegisterMessage('AdiCCMonitor_SpellUpdated')
+		self:RegisterMessage('AdiCCMonitor_WipeTarget', 'PlanNextUpdate')
+		if prefs.messages.failure then
+			addon.RegisterCombatLogEvent(self, 'SPELL_CAST_FAILED')
+			addon.RegisterCombatLogEvent(self, 'SPELL_MISSED')
+		else
+			addon.UnregisterCombatLogEvent(self, 'SPELL_CAST_FAILED')
+			addon.UnregisterCombatLogEvent(self, 'SPELL_MISSED')
+		end
+		self:PlanNextUpdate()
 	else
-		addon.UnregisterCombatLogEvent(self, 'SPELL_CAST_FAILED')
-		addon.UnregisterCombatLogEvent(self, 'SPELL_MISSED')
+		self:UnregisterAllMessages()
+		addon.UnregisterAllCombatLogEvents(self)
+		self:CancelRunningTimer()
 	end
 end
 
@@ -65,12 +68,16 @@ function mod:SPELL_MISSED(event, _, _, _, _, _, _, _, spellName, _, missType)
 	self:Alert('failure', spellName, _G[missType] or missType)
 end
 
-function mod:PlanNextUpdate()
+function mod:CancelRunningTimer()
 	if self.runningTimer then
 		self:CancelTimer(self.runningTimer, true)
 		self.runningTimer = nil
 	end
-	if not prefs.messages.warning then return end
+end
+
+function mod:PlanNextUpdate()
+	self:CancelRunningTimer()
+	if prefs.messages.warning then return end
 	self:Debug('PlanNextUpdate')
 	local delay = prefs.delay
 	local nextTime
@@ -125,7 +132,7 @@ for i = 1, 8 do SYMBOLS.textual[i] = '{'.._G["RAID_TARGET_"..i]..'}' end
 for i = 1, 8 do SYMBOLS.numerical[i] = '{rt'..i..'}' end
 
 function mod:Alert(messageID, ...)
-	if not prefs.messages[messageID] or not IsInInstance() then
+	if not prefs.messages[messageID] then
 		return
 	end
 	self:Debug('Alert', messageID, ...)
@@ -166,8 +173,16 @@ function mod:GetOptions()
 		args = {
 			_info = {
 				type = 'description',
-				name = L["Notes: alerts are disabled outside of instances and players flagged as tanks are ignored."],
+				name = L["Notes: alerts are disabled outside of instances and players flagged as tanks are ignored, unless you enable the testing option."],
 				order = 1,
+			},
+			testing = {
+				name = L['Testing'],
+				desc = L["Check this to test the alerts out of instance. This setting is not saved."],
+				order = 2,
+				type = 'toggle',
+				get = function() return self.testing end,
+				set = function(_, value) self.testing = value self:UpdateListeners() end,
 			},
 			messages = {
 				name = L['Events to announce'],
