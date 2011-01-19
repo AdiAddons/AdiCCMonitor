@@ -40,7 +40,7 @@ function mod:OnConfigChanged(key, ...)
 end
 
 function mod:UpdateListeners()
-	if self:IsEnabled() and (self.testing or IsInInstance()) and next(prefs.messages) then
+	if self:IsEnabled() and (self.testing or IsInInstance()) then
 		self:RegisterMessage('AdiCCMonitor_SpellAdded')
 		self:RegisterMessage('AdiCCMonitor_SpellRemoved')
 		self:RegisterMessage('AdiCCMonitor_SpellUpdated')
