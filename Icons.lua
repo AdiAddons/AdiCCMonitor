@@ -29,6 +29,7 @@ local DEFAULT_SETTINGS = {
 		showCooldown = true,
 		blinking = true,
 		blinkingThreshold = 5,
+		countdownSide = "INSIDE_BOTTOM",
 	}
 }
 
@@ -288,10 +289,6 @@ function mod:CreateIcon()
 	icon.Symbol = symbol
 
 	local countdown = overlay:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
-	countdown:SetPoint("BOTTOMLEFT")
-	countdown:SetPoint("BOTTOMRIGHT")
-	countdown:SetJustifyH("MIDDLE")
-	countdown:SetJustifyV("BOTTOM")
 	countdown:Hide()
 	icon.Countdown = countdown
 
@@ -349,6 +346,7 @@ function iconProto:UpdateWidgets()
 		self.Cooldown:Hide()
 	end
 	if prefs.showCountdown and self:UpdateCountdown(GetTime()) then
+		self:SetTextPosition(self.Countdown, prefs.countdownSide)
 		self.Countdown:Show()
 	else
 		self.Countdown:Hide()
@@ -413,6 +411,28 @@ function iconProto:UpdateCountdown(now)
 	end
 end
 
+function iconProto:SetTextPosition(text, side)
+	if text.side == side and text.vertical == prefs.vertical then return end
+	text.side, text.vertical = side, prefs.vertical
+	text:ClearAllPoints()
+	local inside = strmatch(side, 'INSIDE_(%w+)')
+	if inside then
+		text:SetPoint(inside, self, inside, 0, 0)
+	elseif side == "OUTSIDE_TOPLEFT" then
+		if prefs.vertical then
+			text:SetPoint("RIGHT", self, "LEFT", 0, 0)
+		else
+			text:SetPoint("BOTTOM", self, "TOP", 0, 0)
+		end
+	elseif side == "OUTSIDE_BOTTOMRIGHT" then
+		if prefs.vertical then
+			text:SetPoint("LEFT", self, "RIGHT", 0, 0)
+		else
+			text:SetPoint("TOP", self, "BOTTOM", 0, 0)
+		end
+	end
+end
+
 function iconProto:OnSizeChanged(width, height)
 	if width and height then
 		mod:Debug(self, 'OnSizeChanged', width, height)
@@ -425,6 +445,25 @@ end
 --------------------------------------------------------------------------------
 
 function mod:GetOptions()
+	local sides = {
+		horizontal = {
+			INSIDE_TOP = L['Inside, top'],
+			INSIDE_BOTTOM = L['Inside, bottom'],
+			INSIDE_LEFT = L['Inside, left'],
+			INSIDE_RIGHT = L['Inside, right'],
+			OUTSIDE_TOPLEFT = L['Outside, top'],
+			OUTSIDE_BOTTOMRIGHT = L['Outside, bottom'],
+		},
+		vertical = {
+			INSIDE_TOP = L['Inside, top'],
+			INSIDE_BOTTOM = L['Inside, bottom'],
+			INSIDE_LEFT = L['Inside, left'],
+			INSIDE_RIGHT = L['Inside, right'],
+			OUTSIDE_TOPLEFT = L['Outside, left'],
+			OUTSIDE_BOTTOMRIGHT = L['Outside, right'],
+		}
+	}
+
 	return {
 		name = L['Icons'],
 		type = 'group',
@@ -478,6 +517,13 @@ function mod:GetOptions()
 				desc = L['Numerical display of time left.'],
 				type = 'toggle',
 				order = 60,
+			},
+			countdownSide = {
+				name = L['Countdown position'],
+				type = 'select',
+				values = function() return sides[prefs.vertical and "vertical" or "horizontal"] end,
+				disabled = function(info) return info.handler:IsDisabled() or not prefs.showCountdown end,
+				order = 65,
 			},
 			showCooldown = {
 				name = L['Show cooldown model'],
