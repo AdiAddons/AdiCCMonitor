@@ -80,6 +80,7 @@ local SPELLS = {
 	[10326] = 20, -- Turn Evil
 	[19386] = 30, -- Wyvern Sting
 }
+addon.SPELLS = SPELLS
 
 --------------------------------------------------------------------------------
 -- Addon initialization and enabling
