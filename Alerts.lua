@@ -26,13 +26,14 @@ end
 function mod:OnEnable()
 	prefs = self.db.profile
 	self:SetSinkStorage(prefs)
-	self.runningTimer = nil	
-	self:RegisterMessage('PLAYER_ENTERING_WORLD', 'UpdateListeners')
+	self:RegisterEvent('PLAYER_ENTERING_WORLD', 'UpdateListeners')
+	self:RegisterMessage('AdiCCMonitor_TestFlagChanged', 'UpdateListeners')
 	self:UpdateListeners()
 end
 
 function mod:OnDisable()
-	self:UpdateListeners()	
+	addon.UnregisterAllCombatLogEvents(self)
+	self.runningTimer = nil
 end
 
 function mod:OnConfigChanged(key, ...)
@@ -40,11 +41,16 @@ function mod:OnConfigChanged(key, ...)
 end
 
 function mod:UpdateListeners()
-	if self:IsEnabled() and (self.testing or IsInInstance()) then
-		self:RegisterMessage('AdiCCMonitor_SpellAdded')
-		self:RegisterMessage('AdiCCMonitor_SpellRemoved')
-		self:RegisterMessage('AdiCCMonitor_SpellUpdated')
-		self:RegisterMessage('AdiCCMonitor_WipeTarget', 'PlanNextUpdate')
+	local listening = addon.testing or IsInInstance()
+	if listening then
+		if not self.listening then
+			self:RegisterMessage('AdiCCMonitor_SpellAdded')
+			self:RegisterMessage('AdiCCMonitor_SpellRemoved')
+			self:RegisterMessage('AdiCCMonitor_SpellUpdated')
+			self:RegisterMessage('AdiCCMonitor_WipeTarget', 'PlanNextUpdate')
+			self.listening = true
+			self:Debug('Started listening')
+		end
 		if prefs.messages.failure then
 			addon.RegisterCombatLogEvent(self, 'SPELL_CAST_FAILED')
 			addon.RegisterCombatLogEvent(self, 'SPELL_MISSED')
@@ -53,10 +59,15 @@ function mod:UpdateListeners()
 			addon.UnregisterCombatLogEvent(self, 'SPELL_MISSED')
 		end
 		self:PlanNextUpdate()
-	else
-		self:UnregisterAllMessages()
+	elseif self.listening then
+		self:UnregisterMessage('AdiCCMonitor_SpellAdded')
+		self:UnregisterMessage('AdiCCMonitor_SpellRemoved')
+		self:UnregisterMessage('AdiCCMonitor_SpellUpdated')
+		self:UnregisterMessage('AdiCCMonitor_WipeTarget')
 		addon.UnregisterAllCombatLogEvents(self)
 		self:CancelRunningTimer()
+		self.listening = nil
+		self:Debug('Stopped listening')
 	end
 end
 
@@ -173,16 +184,8 @@ function mod:GetOptions()
 		args = {
 			_info = {
 				type = 'description',
-				name = L["Notes: alerts are disabled outside of instances and players flagged as tanks are ignored, unless you enable the testing option."],
+				name = L["Notes: alerts are disabled outside of instances and players flagged as tanks are ignored."],
 				order = 1,
-			},
-			testing = {
-				name = L['Testing'],
-				desc = L["Check this to test the alerts out of instance. This setting is not saved."],
-				order = 2,
-				type = 'toggle',
-				get = function() return self.testing end,
-				set = function(_, value) self.testing = value self:UpdateListeners() end,
 			},
 			messages = {
 				name = L['Events to announce'],
@@ -206,7 +209,7 @@ function mod:GetOptions()
 				step = 1,
 				disabled = function(info) return info.handler:IsDisabled(info) or not prefs.messages.warning end,
 				order = 20,
-			},			
+			},
 			numericalSymbols = {
 				name = L['Alternative symbol strings'],
 				desc = format(L["Use this option if %s or %s are not displayed as icons in chat frames. AdiCCMonitor will use {rt1}..{rt8} instead. Note: stock chat bubbles do not display any of them anyway."], SYMBOLS.textual[1], SYMBOLS.textual[8]),
