@@ -27,9 +27,11 @@ local DEFAULT_SETTINGS = {
 		showSymbol = true,
 		showCountdown = true,
 		showCooldown = true,
+		showCaster = true,
 		blinking = true,
 		blinkingThreshold = 5,
 		countdownSide = "INSIDE_BOTTOM",
+		casterSide = "INSIDE_TOP",
 	}
 }
 
@@ -113,11 +115,11 @@ function mod:Test()
 			icon:FadeOut(0.5)
 			wasTesting = true
 		end
-	end	
+	end
 	if not wasTesting then
 		local num = prefs.numIcons
 		for id, duration in pairs(addon.SPELLS) do
-			self:AddSpell("TEST", id, 1 + (num % 8), duration, GetTime() + math.random(40, duration * 10) / 10, num % 1 == 0)
+			self:AddSpell("TEST", id, 1 + (num % 8), duration, GetTime() + math.random(40, duration * 10) / 10, num % 2 == 0, "*Test*")
 			num = num - 1
 			if num == 0 then
 				break
@@ -131,20 +133,20 @@ end
 -- Individual spell handling
 --------------------------------------------------------------------------------
 
-function mod:AddSpell(guid, spellID, symbol, duration, expires, isMine)
+function mod:AddSpell(guid, spellID, symbol, duration, expires, isMine, caster)
 	local icon = self:AcquireIcon()
-	icon:Update(guid, spellID, symbol, duration, expires, isMine)
+	icon:Update(guid, spellID, symbol, duration, expires, isMine, caster)
 	icon:Show()
 end
 
-function mod:UpdateSpell(guid, spellID, symbol, duration, expires, isMine)
+function mod:UpdateSpell(guid, spellID, symbol, duration, expires, isMine, caster)
 	for icon in self:IterateIcons() do
 		if icon.guid == guid and icon.spellID == spellID then
-			icon:Update(guid, spellID, symbol, duration, expires, isMine)
+			icon:Update(guid, spellID, symbol, duration, expires, isMine, caster)
 			return
 		end
 	end
-	self:AddSpell(guid, spellID, spell)
+	self:AddSpell(guid, spellID, symbol, duration, expires, isMine, caster)
 end
 
 function mod:RemoveSpell(guid, spellID, instant, broken)
@@ -153,7 +155,7 @@ function mod:RemoveSpell(guid, spellID, instant, broken)
 		if icon.guid == guid and icon.spellID == spellID then
 			if instant then
 				icon:Release()
-			elseif broken then -- icon.expires and icon.expires - now > prefs.blinkingThreshold then
+			elseif broken then
 				icon.Texture:SetVertexColor(1, 0, 0, 1)
 				icon:FadeOut(2)
 			else
@@ -208,12 +210,12 @@ end
 --------------------------------------------------------------------------------
 
 function mod:AdiCCMonitor_SpellAdded(event, guid, spellID, spell)
-	self:AddSpell(guid, spellID, spell.symbol, spell.duration, spell.expires, spell.isMine)
+	self:AddSpell(guid, spellID, spell.symbol, spell.duration, spell.expires, spell.isMine, spell.caster)
 	self:Layout()
 end
 
 function mod:AdiCCMonitor_SpellUpdated(event, guid, spellID, spell)
-	self:UpdateSpell(guid, spellID, spell.symbol, spell.duration, spell.expires, spell.isMine)
+	self:UpdateSpell(guid, spellID, spell.symbol, spell.duration, spell.expires, spell.isMine, spell.caster)
 	self:Layout()
 end
 
@@ -313,6 +315,10 @@ function mod:CreateIcon()
 	countdown:Hide()
 	icon.Countdown = countdown
 
+	local caster = overlay:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+	caster:Hide()
+	icon.Caster = caster
+
 	return icon
 end
 
@@ -337,11 +343,11 @@ function iconProto:Release()
 	iconHeap[self] = true
 end
 
-function iconProto:Update(guid, spellID, symbol, duration, expires, isMine)
+function iconProto:Update(guid, spellID, symbol, duration, expires, isMine, caster)
 	self:StopFadingOut()
 	self.guid = guid
-	if self.spellID ~= spellID or self.symbol ~= symbol or self.duration ~= duration or self.expires ~= expires or self.isMine ~= isMine then
-		self.spellID, self.symbol, self.duration, self.expires, self.isMine = spellID, symbol, duration, expires, isMine
+	if self.spellID ~= spellID or self.symbol ~= symbol or self.duration ~= duration or self.expires ~= expires or self.isMine ~= isMine or self.caster ~= caster then
+		self.spellID, self.symbol, self.duration, self.expires, self.isMine, self.caster = spellID, symbol, duration, expires, isMine, caster
 		self:UpdateWidgets()
 	end
 end
@@ -372,6 +378,13 @@ function iconProto:UpdateWidgets()
 	else
 		self.Countdown:Hide()
 	end
+	if prefs.showCaster and self.caster then
+		self:SetTextPosition(self.Caster, prefs.casterSide)
+		self.Caster:SetText(self.caster)
+		self.Caster:Show()
+	else
+		self.Caster:Hide()
+	end
 end
 
 local cos, PI2 = math.cos, math.pi * 2
@@ -389,7 +402,7 @@ function iconProto:OnUpdate(now, elapsed)
 			targetAlpha, targetDelay = 0, self.fadingDelay
 		end
 	else
-		if prefs.blinking and now > self.expires - prefs.blinkingThreshold then		
+		if prefs.blinking and now > self.expires - prefs.blinkingThreshold then
 			targetAlpha, targetDelay = prefs.alpha * (0.55 + 0.45 * cos(now * PI2)), 0.5
 		end
 		if self.Countdown:IsShown() then
@@ -413,6 +426,7 @@ function iconProto:FadeOut(delay)
 		self.fadingDelay = delay
 		self.fadingEnd = GetTime() + delay
 		self.Countdown:Hide()
+		self.Caster:Hide()
 	end
 end
 
@@ -534,6 +548,7 @@ function mod:GetOptions()
 				step = 0.01,
 				order = 40,
 			},
+
 			showSymbol = {
 				name = L['Show symbol'],
 				desc = L['Display the target raid marker.'],
@@ -558,6 +573,19 @@ function mod:GetOptions()
 				desc = L['Graphical display of time left.'],
 				type = 'toggle',
 				order = 70,
+			},
+			showCaster = {
+				name = L['Show caster'],
+				desc = L['Caster name.'],
+				type = 'toggle',
+				order = 75,
+			},
+			casterSide = {
+				name = L['Caster position'],
+				type = 'select',
+				values = function() return sides[prefs.vertical and "vertical" or "horizontal"] end,
+				disabled = function(info) return info.handler:IsDisabled() or not prefs.showCaster end,
+				order = 76,
 			},
 			blinking = {
 				name = L['Enable blinking'],

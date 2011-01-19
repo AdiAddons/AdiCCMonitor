@@ -221,19 +221,20 @@ function addon:GetSpellData(guid, spellID)
 	return spell, isNew
 end
 
-function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expires, isMine, accurate)
+function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expires, isMine, caster, accurate)
 	local spell, isNew = self:GetSpellData(guid, spellID)
 	if not isNew and not accurate and spell.accurate then
 		self:Debug('Ignore inaccurate data for', spellID, 'on', guid)
 		return
 	end
-	if spell.name ~= name or spell.target ~= target or spell.symbol ~= symbol or spell.accurate ~= accurate or spell.duration ~= duration or spell.expires ~= expires or self.isMine ~= isMine then
+	if spell.name ~= name or spell.target ~= target or spell.symbol ~= symbol or spell.accurate ~= accurate or spell.duration ~= duration or spell.expires ~= expires or self.caster ~= caster or self.isMine ~= isMine then
 		spell.name = name
 		spell.target = target
 		spell.symbol = symbol
 		spell.accurate = accurate
 		spell.duration = duration
 		spell.expires = expires
+		spell.caster = caster
 		spell.isMine = isMine
 		self:SendMessage(isNew and 'AdiCCMonitor_SpellAdded' or 'AdiCCMonitor_SpellUpdated', guid, spellID, spell)
 	end
@@ -287,7 +288,7 @@ function addon:RefreshFromUnit(unit)
 		if name and spellID and SPELLS[spellID] then
 			local isMine = (caster == 'player' or caster == 'pet' or caster == 'vehicle')
 			seen[spellID] = true
-			self:UpdateSpell(guid, spellID, name, targetName, symbol, duration, expires, isMine, true)
+			self:UpdateSpell(guid, spellID, name, targetName, symbol, duration, expires, isMine, UnitName(caster or ""), true)
 			local casterGUID = UnitGUID(caster)
 			if casterGUID then
 				playerSpellDurations[casterGUID..'-'..spellID] = duration
@@ -388,7 +389,7 @@ end
 function addon:SPELL_AURA_APPLIED(_, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, spellName)
 	local isMine = band(sourceFlags, COMBATLOG_OBJECT_AFFILIATION_MINE) ~= 0
 	local duration = GetDefaultDuration(sourceGUID, spellID)
-	self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destGUID, destFlags), duration, GetTime()+duration, isMine)
+	self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destGUID, destFlags), duration, GetTime()+duration, isMine, sourceName)
 end
 
 function addon:SPELL_AURA_REMOVED(event, sourceGUID, sourceName, _, destGUID, _, _, spellID)
