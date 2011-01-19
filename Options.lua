@@ -64,17 +64,23 @@ function addon.GetOptions()
 				order = 1,
 				type = 'group',
 				args = {
+					test = {
+						name = L['Test'],
+						order = 10,						
+						desc = L['Simulate some spell events to test the addon.'],
+						type = 'execute',
+						func = function() self:Test() end,
+					},
 					modules = {
 						name = L['Enabled modules'],
-						desc = L[''],
-						order = 1,
+						order = 20,
 						type = 'multiselect',
 						values = moduleList,
 					},
 					onlyMine = {
 						name = L['Only mine'],
-						desc = L['Ignore spells from other players'],
-						order  = 10,
+						desc = L['Ignore spells from other players.'],
+						order  = 30,
 						type = 'toggle',
 					},
 				},

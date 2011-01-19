@@ -80,7 +80,6 @@ local SPELLS = {
 	[10326] = 20, -- Turn Evil
 	[19386] = 30, -- Wyvern Sting
 }
-addon.SPELLS = SPELLS
 
 --------------------------------------------------------------------------------
 -- Addon initialization and enabling
@@ -189,6 +188,63 @@ do
 	function del(t)
 		wipe(t)
 		heap[t] = true
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Test
+--------------------------------------------------------------------------------
+
+do
+	local AceTimer = LibStub('AceTimer-3.0')
+	local timerSelf = addonName..'Test'
+	local testGUID, testName = "TEST", "DUMMY"
+	local testID
+
+	local function CheckTestMode()
+		if not GUIDs[testGUID] then
+			self.testing = false
+			self:SendMessage('AdiCCMonitor_TestFlagChanged', false)
+		end
+	end
+
+	local function RemoveTimer(spellID)
+		addon:RemoveSpell(testGUID, spellID)
+		return CheckTestMode()
+	end
+
+	local function BreakTimer(spellID)
+		addon:RemoveSpell(testGUID, spellID, false, "TEST")
+		return CheckTestMode()
+	end
+
+	function addon:Test()
+		self.testing = not GUIDs[testGUID]
+		self:SendMessage('AdiCCMonitor_TestFlagChanged', self.testing)
+		AceTimer.CancelAllTimers(timerSelf)
+		if self.testing then
+			local now = GetTime()
+			local toBreak = random(1, 5)
+			for i = 1, 5 do
+				local duration, name
+				while not name do
+					testID, duration = next(SPELLS, testID)
+					name = testID and GetSpellInfo(testID)
+				end
+				local timeLeft = random(duration * 2, duration * 10) / 10
+				local expires = now + timeLeft
+				local isMine = IsSpellKnown(testID)
+				local symbol = 1 + i % 8
+				self:UpdateSpell(testGUID, testID, name, testName, symbol, duration, expires, isMine, "*Test*", true)
+				if i == toBreak then
+					AceTimer.ScheduleTimer(timerSelf, BreakTimer, random(1, timeLeft), testID)
+				else
+					AceTimer.ScheduleTimer(timerSelf, RemoveTimer, timeLeft, testID)
+				end
+			end
+		else
+			self:RemoveTarget(testGUID)
+		end
 	end
 end
 
