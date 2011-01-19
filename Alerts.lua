@@ -164,13 +164,18 @@ function mod:GetOptions()
 		get = 'Get',
 		disabled = 'IsDisabled',
 		args = {
+			_info = {
+				type = 'description',
+				name = L["Notes: alerts are disabled outside of instances and players flagged as tanks are ignored."],
+				order = 1,
+			},
 			messages = {
-				name = L['Messages'],
+				name = L['Events to announce'],
 				width = 'full',
 				type = 'multiselect',
 				values = {
-					applied = L['Applied'],
-					removed = L['Removed'],
+					applied = L['Beginning'],
+					removed = L['End'],
 					warning = L['About to end'],
 					failure = L['Failures'],
 					early = L['Broken early'],
