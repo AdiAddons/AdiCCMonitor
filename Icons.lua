@@ -109,27 +109,6 @@ function mod:Wipe()
 	end
 end
 
-function mod:Test()
-	local wasTesting = false
-	for icon in self:IterateIcons() do
-		if icon.guid == "TEST" then
-			icon:FadeOut(0.5)
-			wasTesting = true
-		end
-	end
-	if not wasTesting then
-		local num = prefs.numIcons
-		for id, duration in pairs(addon.SPELLS) do
-			self:AddSpell("TEST", id, 1 + (num % 8), duration, GetTime() + math.random(40, duration * 10) / 10, num % 2 == 0, "*Test*")
-			num = num - 1
-			if num == 0 then
-				break
-			end
-		end
-	end
-	self:Layout()
-end
-
 --------------------------------------------------------------------------------
 -- Individual spell handling
 --------------------------------------------------------------------------------
@@ -508,13 +487,6 @@ function mod:GetOptions()
 		get = 'Get',
 		disabled = 'IsDisabled',
 		args = {
-			test = {
-				name = L['Test'],
-				desc = L['Generate some fake spells for testing purpose.'],
-				type = 'execute',
-				func = function() self:Test() end,
-				order = 1,
-			},
 			iconSize = {
 				name = L['Icon size'],
 				desc = L['The size in pixels of icons displaying your spells. Spells of other players are 20% smaller.'],
