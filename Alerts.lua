@@ -77,7 +77,7 @@ end
 
 function mod:PlanNextUpdate()
 	self:CancelRunningTimer()
-	if prefs.messages.warning then return end
+	if not prefs.messages.warning then return end
 	self:Debug('PlanNextUpdate')
 	local delay = prefs.delay
 	local nextTime
