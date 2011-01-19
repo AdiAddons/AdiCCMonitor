@@ -370,11 +370,12 @@ end
 local cos, PI2 = math.cos, math.pi * 2
 function iconProto:OnUpdate(now, elapsed)
 	local targetAlpha, targetDelay = prefs.alpha, 1
+	local alpha = self:GetAlpha()
 	if now > self.expires then
 		self:FadeOut(1)
 	end
 	if self.fadingOut then
-		if now > self.fadingEnd then
+		if alpha == 0 or now > self.fadingEnd then
 			self:Release()
 			mod:Layout()
 			return
@@ -389,7 +390,6 @@ function iconProto:OnUpdate(now, elapsed)
 			self:UpdateCountdown(now)
 		end
 	end
-	local alpha = self:GetAlpha()
 	if alpha ~= targetAlpha then
 		if targetAlpha > alpha then
 			alpha = min(targetAlpha, alpha + elapsed / targetDelay)
