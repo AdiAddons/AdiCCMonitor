@@ -45,9 +45,6 @@ local activeIcons = {}
 
 function mod:OnInitialize()
 	self.db = addon.db:RegisterNamespace(self.moduleName, DEFAULT_SETTINGS)
-	self:RegisterMessage('AdiCCMonitor_SpellAdded')
-	self:RegisterMessage('AdiCCMonitor_SpellUpdated')
-	self:RegisterMessage('AdiCCMonitor_SpellRemoved')
 end
 
 function mod:OnEnable()
@@ -56,6 +53,10 @@ function mod:OnEnable()
 		anchor = self:CreateAnchor()
 	end
 	anchor:Show()
+	self:RegisterMessage('AdiCCMonitor_SpellAdded')
+	self:RegisterMessage('AdiCCMonitor_SpellUpdated')
+	self:RegisterMessage('AdiCCMonitor_SpellRemoved')
+	self:RegisterMessage('AdiCCMonitor_WipeTarget')
 	self:ApplySettings(true)
 end
 
