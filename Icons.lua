@@ -216,13 +216,13 @@ end
 local delay = 0
 local UPDATE_PERIOD = 0.05
 
-local function UpdateCountdowns(self, elapsed)
+local function OnUpdate(self, elapsed)
 	delay = delay + elapsed
 	if delay < UPDATE_PERIOD then return end
 	local now = GetTime()
 	for icon in pairs(activeIcons) do
 		if icon:IsVisible() then
-			icon:OnUpdate(now)
+			icon:OnUpdate(now, delay)
 		end
 	end
 	delay = 0
@@ -234,7 +234,7 @@ function mod:CreateAnchor()
 	anchor:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 20, -200)
 	anchor:SetClampedToScreen(true)
 	anchor:SetFrameStrata("HIGH")
-	anchor:SetScript('OnUpdate', UpdateCountdowns)
+	anchor:SetScript('OnUpdate', OnUpdate)
 	anchor.LM10_OnDatabaseUpdated = function() self:Layout() end
 	self:RegisterMovable(anchor, function() return prefs.anchor end, L['AdiCCMonitor icons'])
 	return anchor
@@ -356,27 +356,34 @@ function iconProto:UpdateWidgets()
 end
 
 local cos, PI2 = math.cos, math.pi * 2
-function iconProto:OnUpdate(now)
-	local alpha = prefs.alpha
+function iconProto:OnUpdate(now, elapsed)
+	local targetAlpha, targetDelay = prefs.alpha, 1
+	if now > self.expires then
+		self:FadeOut(1)
+	end
 	if self.fadingOut then
-		local timeLeft = self.fadingEnd - now
-		if timeLeft > 0 then
-			alpha = alpha * timeLeft / self.fadingDelay
-		else
+		if now > self.fadingEnd then
 			self:Release()
 			mod:Layout()
+			return
+		else
+			targetAlpha, targetDelay = 0, self.fadingDelay
 		end
-	elseif now > self.expires then
-		self:FadeOut(1)
 	else
 		if prefs.blinking and now > self.expires - prefs.blinkingThreshold then		
-			alpha = alpha * (0.55 + 0.45 * cos(now * PI2))
+			targetAlpha, targetDelay = prefs.alpha * (0.55 + 0.45 * cos(now * PI2)), 0.5
 		end
 		if self.Countdown:IsShown() then
 			self:UpdateCountdown(now)
 		end
 	end
-	if alpha ~= self:GetAlpha() then
+	local alpha = self:GetAlpha()
+	if alpha ~= targetAlpha then
+		if targetAlpha > alpha then
+			alpha = min(targetAlpha, alpha + elapsed / targetDelay)
+		else
+			alpha = max(targetAlpha, alpha - elapsed / targetDelay)
+		end
 		self:SetAlpha(alpha)
 	end
 end
@@ -387,14 +394,12 @@ function iconProto:FadeOut(delay)
 		self.fadingDelay = delay
 		self.fadingEnd = GetTime() + delay
 		self.Countdown:Hide()
-		self.Cooldown:Hide()
 	end
 end
 
 function iconProto:StopFadingOut()
 	if self.fadingOut then
 		self.fadingOut = nil
-		self:SetAlpha(prefs.alpha)
 		self.Texture:SetVertexColor(1, 1, 1, 1)
 		self:UpdateWidgets()
 	end
