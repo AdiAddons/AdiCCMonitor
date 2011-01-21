@@ -191,11 +191,6 @@ function mod:GetOptions()
 		get = 'Get',
 		disabled = 'IsDisabled',
 		args = {
-			_info = {
-				type = 'description',
-				name = L["Notes: players flagged as tanks are ignored."],
-				order = 1,
-			},
 			inInstances = {
 				name = L['Enabled in ...'],
 				desc = L['AdiCCMonitor will keep quiet in unchecked zones.'],
@@ -221,6 +216,11 @@ function mod:GetOptions()
 					early = L['Broken early'],
 				},
 				order = 10,
+			},
+			_earlyNote = {
+				type = 'description',
+				name = format(L["Note: '%s' ignores players flagged as tanks."], L['Broken early']),
+				order = 11,
 			},
 			delay = {
 				name = L['Warning threshold (sec)'],
