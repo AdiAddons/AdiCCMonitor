@@ -13,6 +13,11 @@ local prefs
 
 local DEFAULT_SETTINGS = {
 	profile = {
+		inInstances = {
+			['*'] = false,
+			party = true,
+			raid = true,
+		},
 		messages = { ['*'] = true },
 		delay = 5,
 		numericalSymbols = (GetLocale() == "deDE"),
@@ -41,7 +46,11 @@ function mod:OnConfigChanged(key, ...)
 end
 
 function mod:UpdateListeners()
-	local listening = addon.testing or IsInInstance()
+	local listening = addon.testing
+	if not listening then
+		local _, instanceType = IsInInstance()
+		listening = prefs.inInstances[instanceType or "none"]
+	end
 	if listening then
 		if not self.listening then
 			self:RegisterMessage('AdiCCMonitor_SpellAdded')
@@ -184,8 +193,21 @@ function mod:GetOptions()
 		args = {
 			_info = {
 				type = 'description',
-				name = L["Notes: alerts are disabled outside of instances and players flagged as tanks are ignored."],
+				name = L["Notes: players flagged as tanks are ignored."],
 				order = 1,
+			},
+			inInstances = {
+				name = L['Enabled in ...'],
+				desc = L['AdiCCMonitor will keep quiet in unchecked zones.'],
+				order = 5,
+				type = 'multiselect',
+				values = {
+					raid = L['Raid instances'],
+					party = L['5-man instances'],
+					arena = L['Arenas'],
+					pvp = L['Battlegrounds'],
+					none = L['Open world'],
+				},
 			},
 			messages = {
 				name = L['Events to announce'],
