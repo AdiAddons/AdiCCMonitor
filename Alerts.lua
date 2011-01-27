@@ -54,9 +54,9 @@ function mod:UpdateListeners()
 	if listening then
 		if not self.listening then
 			self:RegisterMessage('AdiCCMonitor_SpellAdded')
+			self:RegisterMessage('AdiCCMonitor_SpellUpdated', 'PlanNextUpdate')
 			self:RegisterMessage('AdiCCMonitor_SpellRemoved')
 			self:RegisterMessage('AdiCCMonitor_SpellBroken')
-			self:RegisterMessage('AdiCCMonitor_SpellUpdated')
 			self:RegisterMessage('AdiCCMonitor_WipeTarget', 'PlanNextUpdate')
 			self.listening = true
 			self:Debug('Started listening')
@@ -97,6 +97,14 @@ function mod:CancelRunningTimer()
 	end
 end
 
+local function HasOtherSpells(guid, ignoreSpellID)
+	for spellID, spell in addon:IterateTargetSpells(guid) do
+		if ignoreSpellID ~= spellID then
+			return true
+		end
+	end
+end
+
 function mod:PlanNextUpdate()
 	self:CancelRunningTimer()
 	if not prefs.messages.warning then return end
@@ -104,21 +112,25 @@ function mod:PlanNextUpdate()
 	local delay = prefs.delay
 	local nextTime
 	local now = GetTime()
-	for guid, spellId, spell in addon:IterateSpells() do
-		local alertTime = spell.expires - delay
-		local fadingSoon
-		if alertTime > now then
-			if not nextTime or alertTime < nextTime then
+	for guid, data in addon:IterateTargets() do
+		local maxTimeLeft, longestSpell
+		for spellId, spell in addon:IterateTargetSpells(guid) do
+			local alertTime = spell.expires - delay
+			if alertTime > now and (not nextTime or alertTime < nextTime) then
 				nextTime = alertTime
 			end
-		else
-			fadingSoon = true
-		end
-		if spell.fadingSoon ~= fadingSoon then
-			spell.fadingSoon = fadingSoon
-			if fadingSoon then
-				self:Alert('warning', spell.target, spell.symbol, spell.expires)
+			local timeLeft = spell.expires - now
+			if timeLeft > 0 and (not maxTimeLeft or timeLeft > maxTimeLeft) then
+				maxTimeLeft, longestSpell = timeLeft, spell
 			end
+		end
+		if maxTimeLeft and maxTimeLeft < delay then
+			if not data.warningAlert then
+				data.warningAlert = true
+				self:Alert('warning', longestSpell.target, longestSpell.symbol, longestSpell.expires)
+			end
+		else
+			data.warningAlert = nil
 		end
 	end
 	if nextTime then
@@ -128,26 +140,30 @@ function mod:PlanNextUpdate()
 end
 
 function mod:AdiCCMonitor_SpellAdded(event, guid, spellID, spell)
+	self:PlanNextUpdate()
+	for otherSpellID, otherSpell in addon:IterateTargetSpells(guid) do
+		if otherSpellID ~= spellID and otherSpell.expires > spell.expires then
+			return
+		end
+	end
 	self:Alert('applied', spell.target, spell.symbol, spell.expires, spell.name)
-	return self:PlanNextUpdate()
-end
-
-function mod:AdiCCMonitor_SpellUpdated(event, guid, spellID, spell)
-	return self:PlanNextUpdate()
 end
 
 function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell)
 	self:PlanNextUpdate()
-	local messageID = "removed"
-	if prefs.messages.early and spell.expires >= GetTime() + 1 and not (prefs.messages.warning and spell.fadingSoon) then
-		messageID = "early"
+	-- Only announce if there is no other spell
+	if not HasOtherSpells(guid, spellID) then
+		if prefs.messages.early and spell.expires >= GetTime() + 1 and not addon:GetGUIDData(guid).warningAlert then
+			self:Alert("early", spell.target, spell.symbol, spell.expires)
+		else
+			self:Alert("removed", spell.target, spell.symbol, spell.expires)
+		end
 	end
-	self:Alert(messageID, spell.target, spell.symbol, spell.expires)
 end
 
 function mod:AdiCCMonitor_SpellBroken(event, guid, spellID, spell, brokenByName, brokenBySpell)
 	self:PlanNextUpdate()
-	if prefs.messages.early and not (prefs.messages.warning and spell.fadingSoon) then
+	if prefs.messages.early and not HasOtherSpells(guid, spellID) and not addon:GetGUIDData(guid).warningAlert then
 		local raidID = UnitInRaid(brokenByName)
 		local role = raidID and select(10, GetRaidRosterInfo(raidID)) or UnitGroupRolesAssigned(brokenByName)
 		if role ~= "TANK" then

@@ -395,6 +395,17 @@ function addon:IterateSpells()
 	return spellIterator, new()
 end
 
+function addon:IterateTargets()
+	return pairs(GUIDs)
+end
+
+function addon:IterateTargetSpells(guid)
+	local data = guid and GUIDs[guid]
+	if data and data.spells then
+		return pairs(data.spells)
+	end
+end
+
 --------------------------------------------------------------------------------
 -- Event handling
 --------------------------------------------------------------------------------
