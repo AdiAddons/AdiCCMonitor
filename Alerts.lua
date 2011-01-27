@@ -153,7 +153,7 @@ function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell)
 	self:PlanNextUpdate()
 	-- Only announce if there is no other spell
 	if not HasOtherSpells(guid, spellID) then
-		if prefs.messages.early and spell.expires >= GetTime() + 1 and not addon:GetGUIDData(guid).warningAlert then
+		if prefs.messages.early and spell.expires >= GetTime() + prefs.delay and not addon:GetGUIDData(guid).warningAlert then
 			self:Alert("early", spell.target, spell.symbol, spell.expires)
 		else
 			self:Alert("removed", spell.target, spell.symbol, spell.expires)
