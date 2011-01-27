@@ -108,6 +108,8 @@ function addon:OnEnable()
 	self:RegisterEvent('PLAYER_FOCUS_CHANGED')
 	self:RegisterEvent('UPDATE_MOUSEOVER_UNIT')
 	self:RegisterEvent('RAID_TARGET_UPDATE', 'FullRefresh')
+	self:RegisterEvent('PLAYER_ENTERING_WORLD', 'FullRefresh')
+	self:RegisterEvent('PLAYER_LEAVING_WORLD')
 
 	self.RegisterCombatLogEvent(self, 'SPELL_AURA_APPLIED')
 	self.RegisterCombatLogEvent(self, 'SPELL_AURA_REFRESH', 'SPELL_AURA_APPLIED')
@@ -115,7 +117,7 @@ function addon:OnEnable()
 	self.RegisterCombatLogEvent(self, 'SPELL_AURA_BROKEN')
 	self.RegisterCombatLogEvent(self, 'SPELL_AURA_BROKEN_SPELL', 'SPELL_AURA_BROKEN')
 	self.RegisterCombatLogEvent(self, 'UNIT_DIED')
-
+	
 	--@debug@
 	self:RegisterMessage('AdiCCMonitor_SpellAdded', "SpellDebug")
 	self:RegisterMessage('AdiCCMonitor_SpellUpdated', "SpellDebug")
@@ -133,9 +135,7 @@ end
 
 function addon:OnDisable()
 	self:UnregisterAllCombatLogEvents()
-	for guid in pairs(GUIDs) do
-		self:RemoveTarget(guid, true)
-	end
+	self:WipeAll(true)
 end
 
 function addon:Reconfigure()
@@ -328,6 +328,16 @@ function addon:RemoveTarget(guid, silent)
 			self:SendMessage('AdiCCMonitor_WipeTarget', guid)
 		end
 	end
+end
+
+function addon:WipeAll(silent)
+	for guid in pairs(GUIDs) do
+		self:RemoveTarget(guid, silent)
+	end
+end
+
+function addon:PLAYER_LEAVING_WORLD()
+	return self:WipeAll()
 end
 
 local seen = {}
