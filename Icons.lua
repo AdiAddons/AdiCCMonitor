@@ -56,6 +56,7 @@ function mod:OnEnable()
 	self:RegisterMessage('AdiCCMonitor_SpellAdded')
 	self:RegisterMessage('AdiCCMonitor_SpellUpdated')
 	self:RegisterMessage('AdiCCMonitor_SpellRemoved')
+	self:RegisterMessage('AdiCCMonitor_SpellBroken', 'AdiCCMonitor_SpellRemoved')
 	self:RegisterMessage('AdiCCMonitor_WipeTarget')
 	self:ApplySettings(true)
 end

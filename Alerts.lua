@@ -55,6 +55,7 @@ function mod:UpdateListeners()
 		if not self.listening then
 			self:RegisterMessage('AdiCCMonitor_SpellAdded')
 			self:RegisterMessage('AdiCCMonitor_SpellRemoved')
+			self:RegisterMessage('AdiCCMonitor_SpellBroken')
 			self:RegisterMessage('AdiCCMonitor_SpellUpdated')
 			self:RegisterMessage('AdiCCMonitor_WipeTarget', 'PlanNextUpdate')
 			self.listening = true
@@ -71,6 +72,7 @@ function mod:UpdateListeners()
 	elseif self.listening then
 		self:UnregisterMessage('AdiCCMonitor_SpellAdded')
 		self:UnregisterMessage('AdiCCMonitor_SpellRemoved')
+		self:UnregisterMessage('AdiCCMonitor_SpellBroken')
 		self:UnregisterMessage('AdiCCMonitor_SpellUpdated')
 		self:UnregisterMessage('AdiCCMonitor_WipeTarget')
 		addon.UnregisterAllCombatLogEvents(self)
@@ -134,21 +136,24 @@ function mod:AdiCCMonitor_SpellUpdated(event, guid, spellID, spell)
 	return self:PlanNextUpdate()
 end
 
-function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell, brokenByName)
+function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell)
 	self:PlanNextUpdate()
 	local messageID = "removed"
+	if prefs.messages.early and spell.expires >= GetTime() + 1 and not (prefs.messages.warning and spell.fadingSoon) then
+		messageID = "early"
+	end
+	self:Alert(messageID, spell.target, spell.symbol, spell.expires)
+end
+
+function mod:AdiCCMonitor_SpellBroken(event, guid, spellID, spell, brokenByName, brokenBySpell)
+	self:PlanNextUpdate()
 	if prefs.messages.early and not (prefs.messages.warning and spell.fadingSoon) then
-		if brokenByName then
-			local raidID = UnitInRaid(brokenByName)
-			local role = raidID and select(10, GetRaidRosterInfo(raidID)) or UnitGroupRolesAssigned(brokenByName)
-			if role ~= "TANK" then
-				messageID = "early"
-			end
-		elseif spell.expires >= GetTime() + 1 then
-			messageID = "early"
+		local raidID = UnitInRaid(brokenByName)
+		local role = raidID and select(10, GetRaidRosterInfo(raidID)) or UnitGroupRolesAssigned(brokenByName)
+		if role ~= "TANK" then
+			self:Alert("early", spell.target, spell.symbol, spell.expires, brokenByName, brokenBySpell)
 		end
 	end
-	self:Alert(messageID, spell.target, spell.symbol, spell.expires, brokenByName)
 end
 
 local SYMBOLS = { textual = {}, numerical = {} }
@@ -165,7 +170,7 @@ function mod:Alert(messageID, ...)
 		local spell, reason = ...
 		message = spell..': '..reason
 	else
-		local target, symbol, expires, moreArg = ...
+		local target, symbol, expires, moreArg, moreArg2 = ...
 		local targetName = SYMBOLS[prefs.numericalSymbols and "numerical" or "textual"][symbol or false] or target
 		local timeLeft = expires and floor(expires - GetTime() + 0.5)
 		if messageID == 'applied' then
@@ -177,6 +182,9 @@ function mod:Alert(messageID, ...)
 		elseif messageID == 'early' then
 			if moreArg then
 				message = format(L['%s has been freed by %s !'], targetName, moreArg)
+				if moreArg2 then
+					message = format('%s (%s)', message, moreArg2)
+				end
 			else
 				message = format(L['%s has broken free!'], targetName)
 			end

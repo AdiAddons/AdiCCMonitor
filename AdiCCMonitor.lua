@@ -112,14 +112,15 @@ function addon:OnEnable()
 	self.RegisterCombatLogEvent(self, 'SPELL_AURA_APPLIED')
 	self.RegisterCombatLogEvent(self, 'SPELL_AURA_REFRESH', 'SPELL_AURA_APPLIED')
 	self.RegisterCombatLogEvent(self, 'SPELL_AURA_REMOVED')
-	self.RegisterCombatLogEvent(self, 'SPELL_AURA_BROKEN', 'SPELL_AURA_REMOVED')
-	self.RegisterCombatLogEvent(self, 'SPELL_AURA_BROKEN_SPELL', 'SPELL_AURA_REMOVED')
+	self.RegisterCombatLogEvent(self, 'SPELL_AURA_BROKEN')
+	self.RegisterCombatLogEvent(self, 'SPELL_AURA_BROKEN_SPELL', 'SPELL_AURA_BROKEN')
 	self.RegisterCombatLogEvent(self, 'UNIT_DIED')
 
 	--@debug@
 	self:RegisterMessage('AdiCCMonitor_SpellAdded', "SpellDebug")
 	self:RegisterMessage('AdiCCMonitor_SpellUpdated', "SpellDebug")
 	self:RegisterMessage('AdiCCMonitor_SpellRemoved', "SpellDebug")
+	self:RegisterMessage('AdiCCMonitor_SpellBroken', "SpellDebug")
 	self:RegisterMessage('AdiCCMonitor_WipeTarget', "SpellDebug")
 	--@end-debug@
 
@@ -301,12 +302,12 @@ function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expire
 	end
 end
 
-function addon:RemoveSpell(guid, spellID, silent, brokenByName)
+function addon:RemoveSpell(guid, spellID, silent, brokenByName, brokenBySpell)
 	local data = GUIDs[guid]
 	local spell = data and data.spells[spellID]
 	if spell then
 		if not silent then
-			self:SendMessage('AdiCCMonitor_SpellRemoved', guid, spellID, spell, brokenByName)
+			self:SendMessage(brokenByName and 'AdiCCMonitor_SpellBroken' or 'AdiCCMonitor_SpellRemoved', guid, spellID, spell, brokenByName, brokenBySpell)
 		end
 		data.spells[spellID] = del(spell)
 		if not next(data.spells) then
@@ -335,7 +336,6 @@ function addon:RefreshFromUnit(unit)
 	if not guid or not UnitCanAttack("player", unit) then
 		return
 	end
-	self:Debug('RefreshFromUnit', unit, guid)
 	wipe(seen)
 	-- Scan current debuffs
 	local filter = prefs.onlyMine and "PLAYER" or ""
@@ -447,14 +447,21 @@ local function GetDefaultDuration(guid, spellID)
 	return guid and spellID and (playerSpellDurations[guid..'-'..spellID] or SPELLS[spellID])
 end
 
-function addon:SPELL_AURA_APPLIED(_, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, spellName)
+function addon:SPELL_AURA_APPLIED(event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, spellName)
+	self:Debug(event, sourceName, spellName, destGUID)
 	local isMine = band(sourceFlags, COMBATLOG_OBJECT_AFFILIATION_MINE) ~= 0
 	local duration = GetDefaultDuration(sourceGUID, spellID)
 	self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destGUID, destFlags), duration, GetTime()+duration, isMine, sourceName)
 end
 
 function addon:SPELL_AURA_REMOVED(event, sourceGUID, sourceName, _, destGUID, _, _, spellID)
-	self:RemoveSpell(destGUID, spellID, false, strmatch(event, 'BROKEN') and sourceName or nil)
+	self:Debug(event, destGUID, spellID)
+	self:RemoveSpell(destGUID, spellID)
+end
+
+function addon:SPELL_AURA_BROKEN(event, sourceGUID, sourceName, _, destGUID, _, _, spellID, _, _, _, brokenBySpell)
+	self:Debug(event, sourceName, brokenBySpell, destGUID)
+	self:RemoveSpell(destGUID, spellID, false, sourceName, event == 'SPELL_AURA_BROKEN_SPELL' and brokenBySpell or nil)
 end
 
 function addon:UNIT_DIED(_, _, _, _, destGUID)
