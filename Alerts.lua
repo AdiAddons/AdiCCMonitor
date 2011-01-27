@@ -137,10 +137,14 @@ end
 function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell, brokenByName)
 	self:PlanNextUpdate()
 	local messageID = "removed"
-	if brokenByName and prefs.messages.early and not (prefs.messages.warning and spell.fadingSoon) then
-		local raidID = UnitInRaid(brokenByName)
-		local role = raidID and select(10, GetRaidRosterInfo(raidID)) or UnitGroupRolesAssigned(brokenByName)
-		if role ~= "TANK" then
+	if prefs.messages.early and not (prefs.messages.warning and spell.fadingSoon) then
+		if brokenByName then
+			local raidID = UnitInRaid(brokenByName)
+			local role = raidID and select(10, GetRaidRosterInfo(raidID)) or UnitGroupRolesAssigned(brokenByName)
+			if role ~= "TANK" then
+				messageID = "early"
+			end
+		elseif spell.expires >= GetTime() + 1 then
 			messageID = "early"
 		end
 	end
@@ -171,7 +175,11 @@ function mod:Alert(messageID, ...)
 		elseif messageID == 'removed' then
 			message = format(L['%s is free !'], targetName)
 		elseif messageID == 'early' then
-			message = format(L['%s has been freed by %s !'], targetName, moreArg)
+			if moreArg then
+				message = format(L['%s has been freed by %s !'], targetName, moreArg)
+			else
+				message = format(L['%s has broken free!'], targetName)
+			end
 		end
 	end
 	if message then
