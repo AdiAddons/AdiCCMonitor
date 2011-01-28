@@ -150,26 +150,31 @@ function mod:AdiCCMonitor_SpellAdded(event, guid, spellID, spell)
 end
 
 function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell)
-	self:PlanNextUpdate()
-	-- Only announce if there is no other spell
-	if not HasOtherSpells(guid, spellID) then
-		if prefs.messages.early and spell.expires >= GetTime() + prefs.delay and not addon:GetGUIDData(guid).warningAlert then
-			self:Alert("early", spell.target, spell.symbol, spell.expires)
-		else
-			self:Alert("removed", spell.target, spell.symbol, spell.expires)
-		end
+	if spell.expires >= GetTime() + 1 then
+		-- This is actually some undetected breakage
+		return self:AdiCCMonitor_SpellBroken(event, guid, spellID, spell)
 	end
+	self:PlanNextUpdate()
+	self:Alert("removed", spell.target, spell.symbol, spell.expires)
 end
 
 function mod:AdiCCMonitor_SpellBroken(event, guid, spellID, spell, brokenByName, brokenBySpell)
 	self:PlanNextUpdate()
-	if prefs.messages.early and not HasOtherSpells(guid, spellID) and not addon:GetGUIDData(guid).warningAlert then
-		local raidID = UnitInRaid(brokenByName)
-		local role = raidID and select(10, GetRaidRosterInfo(raidID)) or UnitGroupRolesAssigned(brokenByName)
+	local data = addon:GetGUIDData(guid)
+	if prefs.messages.early and not data.earlyAlert and not data.warningAlert and not HasOtherSpells(guid, spellID) then
+		local role
+		if brokenByName then
+			role = UnitGroupRolesAssigned(brokenByName)
+			if not role then
+				local raidID = UnitInRaid(brokenByName)
+				role = raidID and select(10, GetRaidRosterInfo(raidID))
+			end
+		end
 		if role ~= "TANK" then
 			self:Alert("early", spell.target, spell.symbol, spell.expires, brokenByName, brokenBySpell)
 		end
 	end
+	data.earlyAlert = true
 end
 
 local SYMBOLS = { textual = {}, numerical = {} }
