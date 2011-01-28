@@ -435,21 +435,28 @@ function iconProto:SetTextPosition(text, side)
 	text.side, text.vertical = side, prefs.vertical
 	text:ClearAllPoints()
 	local inside = strmatch(side, 'INSIDE_(%w+)')
+	local justify
 	if inside then
-		text:SetPoint(inside, self, inside, 0, 0)
-	elseif side == "OUTSIDE_TOPLEFT" then
-		if prefs.vertical then
-			text:SetPoint("RIGHT", self, "LEFT", 0, 0)
-		else
-			text:SetPoint("BOTTOM", self, "TOP", 0, 0)
+		text:SetAllPoints(self)
+		justify = inside
+	else
+		if side == "OUTSIDE_TOPLEFT" then
+			if prefs.vertical then
+				text:SetPoint("RIGHT", self, "LEFT", 0, 0)
+			else
+				text:SetPoint("BOTTOM", self, "TOP", 0, 0)
+			end
+		elseif side == "OUTSIDE_BOTTOMRIGHT" then
+			if prefs.vertical then
+				text:SetPoint("LEFT", self, "RIGHT", 0, 0)
+			else
+				text:SetPoint("TOP", self, "BOTTOM", 0, 0)
+			end
 		end
-	elseif side == "OUTSIDE_BOTTOMRIGHT" then
-		if prefs.vertical then
-			text:SetPoint("LEFT", self, "RIGHT", 0, 0)
-		else
-			text:SetPoint("TOP", self, "BOTTOM", 0, 0)
-		end
+		justify = text:GetPoint()
 	end
+	text:SetJustifyH((justify == "LEFT" or justify == "RIGHT") and justify or "CENTER")
+	text:SetJustifyV((justify == "TOP" or justify == "BOTTOM") and justify or "MIDDLE")	
 end
 
 function iconProto:OnSizeChanged(width, height)
