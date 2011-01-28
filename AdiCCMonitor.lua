@@ -284,10 +284,8 @@ function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expire
 		self:Debug('Ignore inaccurate data for', spellID, 'on', guid)
 		return
 	end
-	if caster then
-		-- Remove the realm
-		local _
-		caster, _ = strsplit('-', caster, 1)
+	if caster then		
+		caster = strsplit('-', caster) -- Strip realm name
 	end
 	if spell.name ~= name or spell.target ~= target or spell.symbol ~= symbol or spell.accurate ~= accurate or spell.duration ~= duration or spell.expires ~= expires or self.caster ~= caster or self.isMine ~= isMine then
 		spell.name = name
