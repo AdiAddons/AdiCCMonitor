@@ -327,6 +327,9 @@ end
 function iconProto:Update(guid, spellID, symbol, duration, expires, isMine, caster)
 	self:StopFadingOut()
 	self.guid = guid
+	if caster then
+		caster = strsplit('-', caster, 1) -- Strip realm name
+	end
 	if self.spellID ~= spellID or self.symbol ~= symbol or self.duration ~= duration or self.expires ~= expires or self.isMine ~= isMine or self.caster ~= caster then
 		self.spellID, self.symbol, self.duration, self.expires, self.isMine, self.caster = spellID, symbol, duration, expires, isMine, caster
 		self:UpdateWidgets()
