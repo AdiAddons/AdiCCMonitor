@@ -56,6 +56,7 @@ function mod:OnEnable()
 	self:RegisterMessage('AdiCCMonitor_SpellAdded')
 	self:RegisterMessage('AdiCCMonitor_SpellUpdated')
 	self:RegisterMessage('AdiCCMonitor_SpellRemoved')
+	self:RegisterMessage('AdiCCMonitor_SpellBroken', 'AdiCCMonitor_SpellRemoved')
 	self:RegisterMessage('AdiCCMonitor_WipeTarget')
 	self:ApplySettings(true)
 end
@@ -326,6 +327,9 @@ end
 function iconProto:Update(guid, spellID, symbol, duration, expires, isMine, caster)
 	self:StopFadingOut()
 	self.guid = guid
+	if caster then
+		caster = strsplit('-', caster) -- Strip realm name
+	end
 	if self.spellID ~= spellID or self.symbol ~= symbol or self.duration ~= duration or self.expires ~= expires or self.isMine ~= isMine or self.caster ~= caster then
 		self.spellID, self.symbol, self.duration, self.expires, self.isMine, self.caster = spellID, symbol, duration, expires, isMine, caster
 		self:UpdateWidgets()
@@ -431,21 +435,28 @@ function iconProto:SetTextPosition(text, side)
 	text.side, text.vertical = side, prefs.vertical
 	text:ClearAllPoints()
 	local inside = strmatch(side, 'INSIDE_(%w+)')
+	local justify
 	if inside then
-		text:SetPoint(inside, self, inside, 0, 0)
-	elseif side == "OUTSIDE_TOPLEFT" then
-		if prefs.vertical then
-			text:SetPoint("RIGHT", self, "LEFT", 0, 0)
-		else
-			text:SetPoint("BOTTOM", self, "TOP", 0, 0)
+		text:SetAllPoints(self)
+		justify = inside
+	else
+		if side == "OUTSIDE_TOPLEFT" then
+			if prefs.vertical then
+				text:SetPoint("RIGHT", self, "LEFT", 0, 0)
+			else
+				text:SetPoint("BOTTOM", self, "TOP", 0, 0)
+			end
+		elseif side == "OUTSIDE_BOTTOMRIGHT" then
+			if prefs.vertical then
+				text:SetPoint("LEFT", self, "RIGHT", 0, 0)
+			else
+				text:SetPoint("TOP", self, "BOTTOM", 0, 0)
+			end
 		end
-	elseif side == "OUTSIDE_BOTTOMRIGHT" then
-		if prefs.vertical then
-			text:SetPoint("LEFT", self, "RIGHT", 0, 0)
-		else
-			text:SetPoint("TOP", self, "BOTTOM", 0, 0)
-		end
+		justify = text:GetPoint()
 	end
+	text:SetJustifyH((justify == "LEFT" or justify == "RIGHT") and justify or "CENTER")
+	text:SetJustifyV((justify == "TOP" or justify == "BOTTOM") and justify or "MIDDLE")	
 end
 
 function iconProto:OnSizeChanged(width, height)

@@ -33,6 +33,7 @@ addon.L = L
 
 -- Alerts.lua
 L["%s has been freed by %s !"] = true
+L["%s has broken free!"] = true
 L["%s is affected by %s, lasting %d seconds."] = true
 L["%s is free !"] = true
 L["%s will break free in %d seconds."] = true
@@ -107,6 +108,7 @@ L["Test"] = true
 local locale = GetLocale()
 if locale == 'frFR' then
 L["%s has been freed by %s !"] = "%s a été libéré par %s !"
+L["%s has broken free!"] = "%s s'est libéré !"
 L["%s is affected by %s, lasting %d seconds."] = "%s subit %s pour %s secondes."
 L["%s is free !"] = "%s est libre !"
 L["%s will break free in %d seconds."] = "%s se libèrera dans %s secondes."
