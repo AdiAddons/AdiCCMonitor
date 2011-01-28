@@ -204,8 +204,8 @@ do
 
 	local function CheckTestMode()
 		if not GUIDs[testGUID] then
-			self.testing = false
-			self:SendMessage('AdiCCMonitor_TestFlagChanged', false)
+			addon.testing = false
+			addon:SendMessage('AdiCCMonitor_TestFlagChanged', false)
 		end
 	end
 
