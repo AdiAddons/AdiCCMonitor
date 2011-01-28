@@ -197,7 +197,8 @@ function mod:Alert(messageID, ...)
 			message = format(L['%s is free !'], targetName)
 		elseif messageID == 'early' then
 			if moreArg then
-				message = format(L['%s has been freed by %s !'], targetName, moreArg)
+				local name = strsplit('-', moreArg, 1)
+				message = format(L['%s has been freed by %s !'], targetName, name)
 				if moreArg2 then
 					message = format('%s (%s)', message, moreArg2)
 				end
