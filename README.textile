@@ -1,7 +1,15 @@
 AdiCCMonitor helps you keeping track of group crowd-control spells.
 
+h2. Features 
+
 It detects your own crowd-control spells and those of your party/raids and can provide feedbacks in two ways :
-- icons: a bar of icons showing running spells, their target symbols, their caster and the remaining time.
-- alerts: messages that can be sent to any channel for these events: spell applied/ended/broken, cast failures and about-to-end warning. There are no alerts for spells broken by players flagged as tanks.
+* *icons*: a bar of icons showing running spells, their target symbols, their caster and the remaining time.
+* *alerts*: messages that can be sent to any channel (or chat window) for these events: spell applied/ended/broken, cast failures and about-to-end warning. There are no alerts for spells broken by players flagged as tanks.
 
 AdiCCMonitor already comes with a bunch of options. Use /adiccmonitor, /acm or Interface options to open AdiCCMonitor configuration panel.
+
+h2. Known issues and limitations
+
+* **missing or wrong target symbol**: even though AdiCCMonitor does its best to detect the target symbols, this data is sometimes unavailable. Mouse-hovering the target should allow it to catch up.
+* **inaccurate spell duration**: the duration of some spells can be increased by talents. AdiCCMonitor uses the default duration until you mouse-hover or target the controlled creature. It will detect the accurate duration and remember it per caster. Also note that AdiCCMonitor does not track diminishing returns so it will probably be pretty inaccurate for players.
+* **inaccurate alert for broken spells**: fear, hex and entangling roots do not break on first damage and there is no "broken spell" event form them in contrary to the other spells. AdiCCMonitor tries to guess when those spells are broken but in this case it does not know by who.
