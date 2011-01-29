@@ -9,11 +9,10 @@ local L = addon.L
 
 local mod = addon:NewModule('Icons', 'AceEvent-3.0', 'LibMovable-1.0')
 
-local ICON_SPACING = 2
-
 local DEFAULT_SETTINGS = {
 	profile = {
 		iconSize = 32,
+		iconSpacing = 2,
 		numIcons = 8,
 		vertical = false,
 		anchor = {
@@ -170,6 +169,7 @@ function mod:Layout()
 	end
 	table.sort(iconOrder, SortIcons)
 	local x, y = 0, 0
+	local iconSpacing = prefs.iconSpacing
 	local numIcons = prefs.numIcons
 	for i, icon in ipairs(iconOrder) do
 		if i <= numIcons then
@@ -178,8 +178,8 @@ function mod:Layout()
 			icon:SetSize(size, size)
 			icon:SetPoint(point, anchor, point, x, y)
 			icon:Show()
-			x = x + dx * (size + ICON_SPACING)
-			y = y + dy * (size + ICON_SPACING)
+			x = x + dx * (size + iconSpacing)
+			y = y + dy * (size + iconSpacing)
 		else
 			icon:Hide()
 		end
@@ -521,6 +521,15 @@ function mod:GetOptions()
 				max = 15,
 				step = 1,
 				order = 30,
+			},
+			iconSpacing = {
+				name = L['Icon spacing'],
+				desc = L['The size of the gap between icons, in pixels.'],
+				type = 'range',
+				min = 0,
+				max = 64,
+				step = 1,
+				order = 35,
 			},
 			alpha = {
 				name = L['Opacity'],
