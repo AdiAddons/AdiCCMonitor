@@ -109,10 +109,14 @@ function mod:PARTY_MEMBERS_CHANGED()
 	end
 end
 
+local function IsChattySink(sink)
+	return (sink == "RaidWarning") or (sink == "Channel")
+end
+
 function mod:CHAT_MSG_ADDON(_, prefix, message, _, sender)
 	if prefix == self.name and sender then
 		sender = strsplit('-', sender)
-		self.ignoreCaster[sender] = (message == "RaidWarning") or (message == "Channel")
+		self.ignoreCaster[sender] = IsChattySink(message)
 	end
 end
 
@@ -218,7 +222,7 @@ for i = 1, 8 do SYMBOLS.textual[i] = '{'.._G["RAID_TARGET_"..i]..'}' end
 for i = 1, 8 do SYMBOLS.numerical[i] = '{rt'..i..'}' end
 
 function mod:Alert(messageID, caster, ...)
-	if not prefs.messages[messageID] or (caster and self.ignoreCaster[caster]) then
+	if not prefs.messages[messageID] or (caster and self.ignoreCaster[caster] and IsChattySink(prefs.sink20OutputSink)) then
 		return
 	end
 	self:Debug('Alert', messageID, ...)
