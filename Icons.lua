@@ -6,6 +6,7 @@ All rights reserved.
 
 local addonName, addon = ...
 local L = addon.L
+local LSM = LibStub('LibSharedMedia-3.0')
 
 local mod = addon:NewModule('Icons', 'AceEvent-3.0', 'LibMovable-1.0')
 
@@ -31,6 +32,8 @@ local DEFAULT_SETTINGS = {
 		blinkingThreshold = 5,
 		countdownSide = "INSIDE_BOTTOM",
 		casterSide = "INSIDE_TOP",
+		fontName = 'Arial Narrow',
+		fontSize = 14,
 	}
 }
 
@@ -57,6 +60,7 @@ function mod:OnEnable()
 	self:RegisterMessage('AdiCCMonitor_SpellRemoved')
 	self:RegisterMessage('AdiCCMonitor_SpellBroken', 'AdiCCMonitor_SpellRemoved')
 	self:RegisterMessage('AdiCCMonitor_WipeTarget')
+	LSM.RegisterCallback(self, 'LibSharedMedia_SetGlobal', 'OnConfigChanged')
 	self:ApplySettings(true)
 end
 
@@ -431,32 +435,38 @@ function iconProto:UpdateCountdown(now)
 end
 
 function iconProto:SetTextPosition(text, side)
-	if text.side == side and text.vertical == prefs.vertical then return end
-	text.side, text.vertical = side, prefs.vertical
-	text:ClearAllPoints()
-	local inside = strmatch(side, 'INSIDE_(%w+)')
-	local justify
-	if inside then
-		text:SetAllPoints(self)
-		justify = inside
-	else
-		if side == "OUTSIDE_TOPLEFT" then
-			if prefs.vertical then
-				text:SetPoint("RIGHT", self, "LEFT", 0, 0)
-			else
-				text:SetPoint("BOTTOM", self, "TOP", 0, 0)
+	if text.side ~= side or text.vertical ~= prefs.vertical then
+		text.side, text.vertical = side, prefs.vertical
+		text:ClearAllPoints()
+		local inside = strmatch(side, 'INSIDE_(%w+)')
+		local justify
+		if inside then
+			text:SetAllPoints(self)
+			justify = inside
+		else
+			if side == "OUTSIDE_TOPLEFT" then
+				if prefs.vertical then
+					text:SetPoint("RIGHT", self, "LEFT", 0, 0)
+				else
+					text:SetPoint("BOTTOM", self, "TOP", 0, 0)
+				end
+			elseif side == "OUTSIDE_BOTTOMRIGHT" then
+				if prefs.vertical then
+					text:SetPoint("LEFT", self, "RIGHT", 0, 0)
+				else
+					text:SetPoint("TOP", self, "BOTTOM", 0, 0)
+				end
 			end
-		elseif side == "OUTSIDE_BOTTOMRIGHT" then
-			if prefs.vertical then
-				text:SetPoint("LEFT", self, "RIGHT", 0, 0)
-			else
-				text:SetPoint("TOP", self, "BOTTOM", 0, 0)
-			end
+			justify = text:GetPoint()
 		end
-		justify = text:GetPoint()
+		text:SetJustifyH((justify == "LEFT" or justify == "RIGHT") and justify or "CENTER")
+		text:SetJustifyV((justify == "TOP" or justify == "BOTTOM") and justify or "MIDDLE")	
 	end
-	text:SetJustifyH((justify == "LEFT" or justify == "RIGHT") and justify or "CENTER")
-	text:SetJustifyV((justify == "TOP" or justify == "BOTTOM") and justify or "MIDDLE")	
+	if text.fontName ~= prefs.fontName or text.size ~= prefs.fontSize then
+		text.fontName, text.size = prefs.fontName, prefs.fontSize
+		local fontPath = LSM:Fetch(LSM.MediaType.FONT, prefs.fontName)
+		text:SetFont(fontPath, prefs.fontSize, "OUTLINE")
+	end
 end
 
 function iconProto:OnSizeChanged(width, height)
@@ -500,7 +510,7 @@ function mod:GetOptions()
 		args = {
 			iconSize = {
 				name = L['Icon size'],
-				desc = L['The size in pixels of icons displaying your spells. Spells of other players are 20% smaller.'],
+				desc = L['Size of icons displaying your spells, in pixels. Spells of other players are 20% smaller.'],
 				type = 'range',
 				min = 16,
 				max = 64,
@@ -509,13 +519,13 @@ function mod:GetOptions()
 			},
 			vertical = {
 				name = L['Vertical'],
-				desc = L['The orientation of the icon bar.'],
+				desc = L['Orientation of the icon bar.'],
 				type = 'toggle',
 				order = 20,
 			},
 			numIcons = {
 				name = L['Number of icons'],
-				desc = L['The maximum number of icons to show. '],
+				desc = L['Maximum number of icons to show.'],
 				type = 'range',
 				min = 1,
 				max = 15,
@@ -524,7 +534,7 @@ function mod:GetOptions()
 			},
 			iconSpacing = {
 				name = L['Icon spacing'],
-				desc = L['The size of the gap between icons, in pixels.'],
+				desc = L['Size of the gap between icons, in pixels.'],
 				type = 'range',
 				min = 0,
 				max = 64,
@@ -533,7 +543,7 @@ function mod:GetOptions()
 			},
 			alpha = {
 				name = L['Opacity'],
-				desc = L['The opacity of all icons. 100% means full opaque while 0% means fully transparent.'],
+				desc = L['Opacity of all icons. 100% means full opaque while 0% means fully transparent.'],
 				type = 'range',
 				isPercent = true,
 				min = 0.10,
@@ -541,50 +551,66 @@ function mod:GetOptions()
 				step = 0.01,
 				order = 40,
 			},
-
+			fontName = {
+				name = L['Text font'],
+				desc = L['Font to use for the caster and countdown texts'],
+				type = 'select',
+				dialogControl = 'LSM30_Font',
+				values = AceGUIWidgetLSMlists.font,
+				order = 50,
+			},
+			fontSize = {
+				name = L['Text size'],
+				desc = L['Size, in pixels, of the caster and countdown texts.'],
+				type = 'range',
+				min = 8,
+				max = 32,
+				step = 1,
+				order = 60,
+			},
 			showSymbol = {
 				name = L['Show symbol'],
 				desc = L['Display the target raid marker.'],
 				type = 'toggle',
-				order = 50,
+				order = 70,
 			},
 			showCountdown = {
 				name = L['Show countdown'],
 				desc = L['Numerical display of time left.'],
 				type = 'toggle',
-				order = 60,
+				order = 80,
 			},
 			countdownSide = {
 				name = L['Countdown position'],
 				type = 'select',
 				values = function() return sides[prefs.vertical and "vertical" or "horizontal"] end,
 				disabled = function(info) return info.handler:IsDisabled() or not prefs.showCountdown end,
-				order = 65,
+				order = 90,
 			},
 			showCooldown = {
 				name = L['Show cooldown model'],
 				desc = L['Graphical display of time left.'],
 				type = 'toggle',
-				order = 70,
+				order = 100,
 			},
 			showCaster = {
 				name = L['Show caster'],
 				desc = L['Caster name.'],
 				type = 'toggle',
-				order = 75,
+				order = 110,
 			},
 			casterSide = {
 				name = L['Caster position'],
 				type = 'select',
 				values = function() return sides[prefs.vertical and "vertical" or "horizontal"] end,
 				disabled = function(info) return info.handler:IsDisabled() or not prefs.showCaster end,
-				order = 76,
+				order = 120,
 			},
 			blinking = {
 				name = L['Enable blinking'],
 				desc = L['Icons start blinking when the spell is about to end.'],
 				type = 'toggle',
-				order = 80,
+				order = 130,
 			},
 			blinkingThreshold = {
 				name = L['Blinking threshold (sec.)'],
@@ -593,7 +619,7 @@ function mod:GetOptions()
 				min = 1,
 				max = 15,
 				step = 0.5,
-				order = 90,
+				order = 140,
 			},
 			lockAnchor = {
 				name = function() return self:AreMovablesLocked() and L['Unlock anchor'] or L['Lock anchor'] end,
@@ -605,14 +631,14 @@ function mod:GetOptions()
 						self:LockMovables()
 					end
 				end,
-				order = 100,
+				order = 150,
 			},
 			resetPosition = {
 				name = L['Reset position'],
 				desc = L['Move the anchor back to its default position.'],
 				type = 'execute',
 				func = function() self:ResetMovableLayout() end,
-				order = 110,
+				order = 160,
 			},
 		},
 	}
