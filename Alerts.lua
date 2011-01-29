@@ -32,6 +32,12 @@ function mod:OnEnable()
 	prefs = self.db.profile
 	self:SetSinkStorage(prefs)
 	self:RegisterEvent('PLAYER_ENTERING_WORLD', 'UpdateListeners')
+	
+	self.partySize = 0
+	self.ignoreCaster = {}
+	self:RegisterEvent('PARTY_MEMBERS_CHANGED')
+	self:RegisterEvent('CHAT_MSG_ADDON')
+	
 	self:RegisterMessage('AdiCCMonitor_TestFlagChanged', 'UpdateListeners')
 	self:UpdateListeners()
 end
@@ -82,12 +88,42 @@ function mod:UpdateListeners()
 	end
 end
 
-function mod:SPELL_CAST_FAILED(event, _, _, _, _, _, _, _, spellName, _, reason)
-	self:Alert('failure', spellName, reason)
+function mod:AdvertizeParty()
+	self:Debug("AdvertizeParty")
+	local chan = (select(2, IsInInstance()) == "pvp") and "BATTLEGROUND" or "RAID"
+	SendAddonMessage(self.name, prefs.sink20OutputSink, chan)
 end
 
-function mod:SPELL_MISSED(event, _, _, _, _, _, _, _, spellName, _, missType)
-	self:Alert('failure', spellName, _G[missType] or missType)
+function mod:PARTY_MEMBERS_CHANGED()
+	local partySize = GetNumRaidMembers()
+	if partySize == 0 then
+		partySize = GetNumPartyMembers()
+	end
+	if partySize ~= self.partySize then
+		if partySize > self.partySize then
+			self:AdvertizeParty()
+		elseif partySize == 0 then
+			wipe(self.ignoreCaster)
+		end
+		self.partySize = partySize
+	end
+end
+
+function mod:CHAT_MSG_ADDON(_, prefix, message, _, sender)
+	if prefix == self.name and sender then
+		sender = strsplit('-', sender)
+		self.ignoreCaster[sender] = (message == "RaidWarning") or (message == "Channel")
+	end
+end
+
+function mod:SPELL_CAST_FAILED(event, _, sourceName, _, _, _, _, _, spellName, _, reason)
+	sourceName = strsplit('-', sourceName)
+	self:Alert('failure', sourceName, spellName, reason)
+end
+
+function mod:SPELL_MISSED(event, _, sourceName, _, _, _, _, _, spellName, _, missType)
+	sourceName = strsplit('-', sourceName)
+	self:Alert('failure', sourceName, spellName, _G[missType] or missType)
 end
 
 function mod:CancelRunningTimer()
@@ -127,7 +163,7 @@ function mod:PlanNextUpdate()
 		if maxTimeLeft and maxTimeLeft < delay then
 			if not data.warningAlert then
 				data.warningAlert = true
-				self:Alert('warning', longestSpell.target, longestSpell.symbol, longestSpell.expires)
+				self:Alert('warning', nil, longestSpell.target, longestSpell.symbol, longestSpell.expires)
 			end
 		else
 			data.warningAlert = nil
@@ -146,7 +182,7 @@ function mod:AdiCCMonitor_SpellAdded(event, guid, spellID, spell)
 			return
 		end
 	end
-	self:Alert('applied', spell.target, spell.symbol, spell.expires, spell.name)
+	self:Alert('applied', spell.caster, spell.target, spell.symbol, spell.expires, spell.name)
 end
 
 function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell)
@@ -155,7 +191,7 @@ function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell)
 		return self:AdiCCMonitor_SpellBroken(event, guid, spellID, spell)
 	end
 	self:PlanNextUpdate()
-	self:Alert("removed", spell.target, spell.symbol, spell.expires)
+	self:Alert("removed", spell.caster, spell.target, spell.symbol, spell.expires)
 end
 
 function mod:AdiCCMonitor_SpellBroken(event, guid, spellID, spell, brokenByName, brokenBySpell)
@@ -171,7 +207,7 @@ function mod:AdiCCMonitor_SpellBroken(event, guid, spellID, spell, brokenByName,
 			end
 		end
 		if role ~= "TANK" then
-			self:Alert("early", spell.target, spell.symbol, spell.expires, brokenByName, brokenBySpell)
+			self:Alert("early", spell.caster, spell.target, spell.symbol, spell.expires, brokenByName, brokenBySpell)
 		end
 	end
 	data.earlyAlert = true
@@ -181,8 +217,8 @@ local SYMBOLS = { textual = {}, numerical = {} }
 for i = 1, 8 do SYMBOLS.textual[i] = '{'.._G["RAID_TARGET_"..i]..'}' end
 for i = 1, 8 do SYMBOLS.numerical[i] = '{rt'..i..'}' end
 
-function mod:Alert(messageID, ...)
-	if not prefs.messages[messageID] then
+function mod:Alert(messageID, caster, ...)
+	if not prefs.messages[messageID] or (caster and self.ignoreCaster[caster]) then
 		return
 	end
 	self:Debug('Alert', messageID, ...)
