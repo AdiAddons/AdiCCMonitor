@@ -76,9 +76,9 @@ end
 function mod:ApplySettings(fullRefresh)
 
 	if prefs.vertical then
-		anchor:SetSize(prefs.iconSize, (ICON_SPACING + prefs.iconSize) * prefs.numIcons - ICON_SPACING)
+		anchor:SetSize(prefs.iconSize, (prefs.iconSpacing + prefs.iconSize) * prefs.numIcons - prefs.iconSpacing)
 	else
-		anchor:SetSize((ICON_SPACING + prefs.iconSize) * prefs.numIcons - ICON_SPACING, prefs.iconSize)
+		anchor:SetSize((prefs.iconSpacing + prefs.iconSize) * prefs.numIcons - prefs.iconSpacing, prefs.iconSize)
 	end
 
 	anchor:SetAlpha(prefs.alpha)
