@@ -305,7 +305,8 @@ function addon:RemoveSpell(guid, spellID, silent, brokenByName, brokenBySpell)
 	local spell = data and data.spells[spellID]
 	if spell then
 		if not silent then
-			self:SendMessage(brokenByName and 'AdiCCMonitor_SpellBroken' or 'AdiCCMonitor_SpellRemoved', guid, spellID, spell, brokenByName, brokenBySpell)
+			local broken = brokenByName or spell.expires > GetTime() + 1
+			self:SendMessage(broken and 'AdiCCMonitor_SpellBroken' or 'AdiCCMonitor_SpellRemoved', guid, spellID, spell, brokenByName, brokenBySpell)
 		end
 		data.spells[spellID] = del(spell)
 		if not next(data.spells) then

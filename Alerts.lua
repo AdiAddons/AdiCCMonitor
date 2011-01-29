@@ -190,10 +190,6 @@ function mod:AdiCCMonitor_SpellAdded(event, guid, spellID, spell)
 end
 
 function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell)
-	if spell.expires >= GetTime() + 1 then
-		-- This is actually some undetected breakage
-		return self:AdiCCMonitor_SpellBroken(event, guid, spellID, spell)
-	end
 	self:PlanNextUpdate()
 	self:Alert("removed", spell.caster, spell.target, spell.symbol, spell.expires)
 end
