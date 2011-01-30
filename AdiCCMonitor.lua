@@ -95,6 +95,12 @@ local RESILIENT_SPELLS = {
 	[10326] = true, -- Turn Evil
 }
 
+-- Spells that does not break on damage
+local UNBREAKABLE_SPELLS = {
+	[  710] = 30, -- Banish
+	--[33786] =  6, -- Cyclone
+}
+
 --------------------------------------------------------------------------------
 -- Addon initialization and enabling
 --------------------------------------------------------------------------------
@@ -339,7 +345,7 @@ function addon:RemoveSpell(guid, spellID, silent, brokenByName, brokenBySpell)
 	local spell, _, data = self:GetSpellData(guid, spellID, true)
 	if spell then
 		if not silent then
-			local broken = brokenByName or spell.expires > GetTime() + 1
+			local broken = not UNBREAKABLE_SPELLS[spellID] and (brokenByName or spell.expires > GetTime() + 1)
 			self:SendMessage(broken and 'AdiCCMonitor_SpellBroken' or 'AdiCCMonitor_SpellRemoved', guid, spellID, spell, brokenByName, brokenBySpell)
 		end
 		data.spells[spellID] = del(spell)
