@@ -179,7 +179,7 @@ function addon:SpellDebug(event, guid, spellID, spell)
 	if event == 'AdiCCMonitor_WipeTarget' then
 		self:Debug(event, guid)
 	else
-		self:Debug(event, guid, spellID, ':', spell.target, spell.name, spell.symbol, spell.accurate, spell.duration, spell.expires)
+		self:Debug(event, guid, spellID, ':', 'target=', spell.target, 'name=', spell.name, 'symbol=', spell.symbol, 'accurate=', spell.accurate, 'duration=', spell.duration, 'expires=', spell.expires, 'caster=', spell.caster, 'isMine=', spell.isMine)
 	end
 end
 --@end-debug@
@@ -301,7 +301,12 @@ function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expire
 	if caster then		
 		caster = strsplit('-', caster) -- Strip realm name
 	end
-	if spell.name ~= name or spell.target ~= target or spell.symbol ~= symbol or spell.accurate ~= accurate or spell.duration ~= duration or spell.expires ~= expires or self.caster ~= caster or self.isMine ~= isMine then
+	if expires then
+		expires = ceil(expires*10)/10
+	end
+	isMine = not not isMine
+	accurate = not not accurate
+	if isNew or spell.name ~= name or spell.target ~= target or spell.symbol ~= symbol or spell.accurate ~= accurate or spell.duration ~= duration or spell.expires ~= expires or spell.caster ~= caster or spell.isMine ~= isMine then
 		spell.name = name
 		spell.target = target
 		spell.symbol = symbol
