@@ -587,9 +587,19 @@ function combatLogCallbacks:OnUnused(_, event)
 	end
 end
 
+local FILTERED_SPELL_EVENTS = {
+	SPELL_AURA_APPLIED = true,
+	SPELL_AURA_REMOVED = true,
+	SPELL_AURA_REFRESH = true,
+	SPELL_AURA_BROKEN = true,
+	SPELL_AURA_BROKEN_SPELL = true,
+	SPELL_CAST_FAILED = true,
+	SPELL_MISSED = true,
+}
+
 function combatLogCallbacks:OnEvent(_, _, event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, ...)
 	if destGUID and band(destFlags, COMBATLOG_OBJECT_REACTION_FRIENDLY) == 0 and usedLogEvents[event] then
-		if strsub(event, 1, 11) == 'SPELL_AURA_' then
+		if FILTERED_SPELL_EVENTS[event] then
 			if not spellID or not SPELLS[spellID] then
 				return
 			elseif prefs.onlyMine then
