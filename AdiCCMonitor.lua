@@ -253,29 +253,29 @@ end
 -- Spell data handling
 --------------------------------------------------------------------------------
 
-function addon:GetGUIDData(guid)
+function addon:GetGUIDData(guid, passive)
 	local data, isNew = GUIDs[guid], false
-	if not data then
+	if not data and not passive then
 		data = new()
-		data.spells = {}
+		data.spells = new()
 		GUIDs[guid] = data
 		isNew = true
 	end
 	return data, isNew
 end
 
-function addon:GetSpellData(guid, spellID)
-	local data, isNew = self:GetGUIDData(guid)
+function addon:GetSpellData(guid, spellID, passive)
+	local data, isNew = self:GetGUIDData(guid, passive)
 	local spell
 	if data then
 		spell = data.spells[spellID]
-		if not spell then
+		if not spell and not passive then
 			spell = new()
 			data.spells[spellID] = spell
 			isNew = true
 		end
 	end
-	return spell, isNew
+	return spell, isNew, data
 end
 
 function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expires, isMine, caster, accurate)
@@ -300,9 +300,19 @@ function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expire
 	end
 end
 
-function addon:RemoveSpell(guid, spellID, silent, brokenByName, brokenBySpell)
+local function delGUID(guid)
+	addon:Debug('Cleaning up guid', guid)
 	local data = GUIDs[guid]
-	local spell = data and data.spells[spellID]
+	for id, spell in pairs(data.spells) do
+		del(spell)
+	end
+	del(data.spells)
+	del(data)
+	GUIDs[guid] = nil
+end
+
+function addon:RemoveSpell(guid, spellID, silent, brokenByName, brokenBySpell)
+	local spell, _, data = self:GetSpellData(guid, spellID, true)
 	if spell then
 		if not silent then
 			local broken = brokenByName or spell.expires > GetTime() + 1
@@ -310,22 +320,18 @@ function addon:RemoveSpell(guid, spellID, silent, brokenByName, brokenBySpell)
 		end
 		data.spells[spellID] = del(spell)
 		if not next(data.spells) then
-			self:Debug('Cleaning up guid', guid)
-			GUIDs[guid] = del(data)
+			delGUID(guid)
 		end
 	end
 end
 
 function addon:RemoveTarget(guid, silent)
-	local data = GUIDs[guid]
 	guidSymbols[guid] = nil
-	if data then
-		for id in pairs(data.spells) do
-			self:RemoveSpell(guid, id, true)
-		end
+	if GUIDs[guid] then
 		if not silent then
 			self:SendMessage('AdiCCMonitor_WipeTarget', guid)
 		end
+		delGUID(guid)
 	end
 end
 
