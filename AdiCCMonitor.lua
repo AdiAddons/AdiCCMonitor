@@ -81,6 +81,20 @@ local SPELLS = {
 	[19386] = 30, -- Wyvern Sting
 }
 
+-- Spells with variable duration
+local VARIABLE_DURATION_SPELLS = {
+	[ 3355] = true, -- Freezing Trap
+	[ 6770] = true, -- Sap
+}
+
+-- Spells that do not break on first damage
+local RESILIENT_SPELLS = {
+	[  339] = true, -- Entangling Roots
+	[ 5782] = true, -- Fear
+	[51514] = true, -- Hex
+	[10326] = true, -- Turn Evil
+}
+
 --------------------------------------------------------------------------------
 -- Addon initialization and enabling
 --------------------------------------------------------------------------------
@@ -112,7 +126,7 @@ function addon:OnEnable()
 	self:RegisterEvent('PLAYER_LEAVING_WORLD')
 
 	self.RegisterCombatLogEvent(self, 'SPELL_AURA_APPLIED')
-	self.RegisterCombatLogEvent(self, 'SPELL_AURA_REFRESH', 'SPELL_AURA_APPLIED')
+	self.RegisterCombatLogEvent(self, 'SPELL_AURA_REFRESH')
 	self.RegisterCombatLogEvent(self, 'SPELL_AURA_REMOVED')
 	self.RegisterCombatLogEvent(self, 'SPELL_AURA_BROKEN')
 	self.RegisterCombatLogEvent(self, 'SPELL_AURA_BROKEN_SPELL', 'SPELL_AURA_BROKEN')
@@ -280,7 +294,7 @@ end
 
 function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expires, isMine, caster, accurate)
 	local spell, isNew = self:GetSpellData(guid, spellID)
-	if not isNew and not accurate and spell.accurate then
+	if spell and not isNew and RESILIENT_SPELLS[spellID] and not accurate and spell.accurate then
 		self:Debug('Ignore inaccurate data for', spellID, 'on', guid)
 		return
 	end
@@ -365,14 +379,16 @@ function addon:RefreshFromUnit(unit)
 			local isMine = (caster == 'player' or caster == 'pet' or caster == 'vehicle')
 			seen[spellID] = true
 			self:UpdateSpell(guid, spellID, name, targetName, symbol, duration, expires, isMine, UnitName(caster or ""), true)
-			local casterGUID = UnitGUID(caster)
-			if casterGUID then
-				playerSpellDurations[casterGUID..'-'..spellID] = duration
+			if VARIABLE_DURATION_SPELLS[spellID] then
+				local casterGUID = UnitGUID(caster)
+				if casterGUID then
+					playerSpellDurations[casterGUID..'-'..spellID] = duration
+				end
 			end
 		end
 	until not name
 	-- Removed debuffs we haven't seen
-	for spellID in pairs(self:GetGUIDData(guid).spells) do
+	for spellID in self:IterateTargetSpells(guid) do
 		if not seen[spellID] then
 			self:RemoveSpell(guid, spellID)
 		end
@@ -470,22 +486,40 @@ local function GetSymbol(guid, flags)
 end
 
 local function GetDefaultDuration(guid, spellID)
-	return guid and spellID and (playerSpellDurations[guid..'-'..spellID] or SPELLS[spellID])
+	if guid and spellID then
+		if VARIABLE_DURATION_SPELLS[spellID] then
+			local accurateDuration = playerSpellDurations[guid..'-'..spellID]
+			if accurateDuration then
+				return accurateDuration, true
+			else
+				return SPELLS[spellID], false
+			end
+		else
+			return SPELLS[spellID], true
+		end
+	end
 end
 
 function addon:SPELL_AURA_APPLIED(event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, spellName)
 	self:Debug(event, sourceName, spellName, destGUID)
 	local isMine = band(sourceFlags, COMBATLOG_OBJECT_AFFILIATION_MINE) ~= 0
-	local duration = GetDefaultDuration(sourceGUID, spellID)
-	self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destGUID, destFlags), duration, GetTime()+duration, isMine, sourceName)
+	local duration, isAccurate = GetDefaultDuration(sourceGUID, spellID)
+	self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destGUID, destFlags), duration, GetTime()+duration, isMine, sourceName, isAccurate)
 end
 
-function addon:SPELL_AURA_REMOVED(event, sourceGUID, sourceName, _, destGUID, _, _, spellID)
+function addon:SPELL_AURA_REFRESH(...)
+	-- REFRESH events are sent for resilient spells when their target takes damages.
+	if not RESILIENT_SPELLS[select(8, ...)] then
+		return self:SPELL_AURA_APPLIED(...)
+	end
+end
+
+function addon:SPELL_AURA_REMOVED(event, _, _, _, destGUID, _, _, spellID)
 	self:Debug(event, destGUID, spellID)
 	self:RemoveSpell(destGUID, spellID)
 end
 
-function addon:SPELL_AURA_BROKEN(event, sourceGUID, sourceName, _, destGUID, _, _, spellID, _, _, _, brokenBySpell)
+function addon:SPELL_AURA_BROKEN(event, _, sourceName, _, destGUID, _, _, spellID, _, _, _, brokenBySpell)
 	self:Debug(event, sourceName, brokenBySpell, destGUID)
 	self:RemoveSpell(destGUID, spellID, false, sourceName, event == 'SPELL_AURA_BROKEN_SPELL' and brokenBySpell or nil)
 end
