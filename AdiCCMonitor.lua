@@ -430,10 +430,13 @@ function addon:IterateTargets()
 	return pairs(GUIDs)
 end
 
+local function NOOP() end
 function addon:IterateTargetSpells(guid)
 	local data = guid and GUIDs[guid]
 	if data and data.spells then
 		return pairs(data.spells)
+	else
+		return NOOP
 	end
 end
 
