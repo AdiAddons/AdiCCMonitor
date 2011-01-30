@@ -195,7 +195,9 @@ end
 
 function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell)
 	self:PlanNextUpdate()
-	self:Alert("removed", spell.caster, spell.target, spell.symbol, spell.expires)
+	if not HasOtherSpells(guid, spellID) then 
+		self:Alert("removed", spell.caster, spell.target, spell.symbol, spell.expires)
+	end
 end
 
 function mod:AdiCCMonitor_SpellBroken(event, guid, spellID, spell, brokenByName, brokenBySpell)
