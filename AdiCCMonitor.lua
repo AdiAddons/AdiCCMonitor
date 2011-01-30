@@ -132,6 +132,11 @@ function addon:OnEnable()
 	self.RegisterCombatLogEvent(self, 'SPELL_AURA_BROKEN_SPELL', 'SPELL_AURA_BROKEN')
 	self.RegisterCombatLogEvent(self, 'UNIT_DIED')
 	
+	self.RegisterCombatLogEvent(self, 'SPELL_DAMAGE')
+	self.RegisterCombatLogEvent(self, 'RANGE_DAMAGE', 'SPELL_DAMAGE')
+	self.RegisterCombatLogEvent(self, 'SPELL_PERIODIC_DAMAGE', 'SPELL_DAMAGE')
+	self.RegisterCombatLogEvent(self, 'SWING_DAMAGE')
+	
 	--@debug@
 	self:RegisterMessage('AdiCCMonitor_SpellAdded', "SpellDebug")
 	self:RegisterMessage('AdiCCMonitor_SpellUpdated', "SpellDebug")
@@ -175,11 +180,11 @@ function addon:ChatCommand()
 end
 
 --@debug@
-function addon:SpellDebug(event, guid, spellID, spell)
+function addon:SpellDebug(event, guid, spellID, spell, ...)
 	if event == 'AdiCCMonitor_WipeTarget' then
 		self:Debug(event, guid)
 	else
-		self:Debug(event, guid, spellID, ':', 'target=', spell.target, 'name=', spell.name, 'symbol=', spell.symbol, 'accurate=', spell.accurate, 'duration=', spell.duration, 'expires=', spell.expires, 'caster=', spell.caster, 'isMine=', spell.isMine)
+		self:Debug(event, guid, spellID, '{', 'target=', spell.target, 'name=', spell.name, 'symbol=', spell.symbol, 'accurate=', spell.accurate, 'duration=', spell.duration, 'expires=', spell.expires, 'caster=', spell.caster, 'isMine=', spell.isMine, '}', ...)
 	end
 end
 --@end-debug@
@@ -524,7 +529,14 @@ end
 
 function addon:SPELL_AURA_REMOVED(event, _, _, _, destGUID, _, _, spellID)
 	self:Debug(event, destGUID, spellID)
-	self:RemoveSpell(destGUID, spellID)
+	local data = GUIDs[destGUID]
+	if data then
+		if RESILIENT_SPELLS[spellID] then
+			self:RemoveSpell(destGUID, spellID, false, data.lastDamagedBy, data.lastDamagedWith)
+		else
+			self:RemoveSpell(destGUID, spellID)
+		end
+	end
 end
 
 function addon:SPELL_AURA_BROKEN(event, _, sourceName, _, destGUID, _, _, spellID, _, _, _, brokenBySpell)
@@ -534,6 +546,22 @@ end
 
 function addon:UNIT_DIED(_, _, _, _, destGUID)
 	self:RemoveTarget(destGUID)
+end
+
+function addon:SPELL_DAMAGE(event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, spellName)
+	if spellID ~= 339 then -- Ignore damage from entangling roots
+		local data = GUIDs[destGUID]
+		if data then
+			self:Debug(event, sourceName, destName, spellName)
+			data.lastDamagedBy, data.lastDamagedWith = sourceName, spellName
+		end
+	end
+end
+
+local autoAttackID, autoAttackName = 6603
+function addon:SWING_DAMAGE(event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags)
+	if not autoAttackName then autoAttackName = GetSpellInfo(autoAttackID) end
+	return self:SPELL_DAMAGE(event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, autoAttackID, autoAttackName)
 end
 
 --------------------------------------------------------------------------------
@@ -561,7 +589,7 @@ end
 
 function combatLogCallbacks:OnEvent(_, _, event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, ...)
 	if destGUID and band(destFlags, COMBATLOG_OBJECT_REACTION_FRIENDLY) == 0 and usedLogEvents[event] then
-		if strsub(event, 1, 6) == 'SPELL_' then
+		if strsub(event, 1, 11) == 'SPELL_AURA_' then
 			if not spellID or not SPELLS[spellID] then
 				return
 			elseif prefs.onlyMine then
