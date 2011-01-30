@@ -18,7 +18,11 @@ local DEFAULT_SETTINGS = {
 			party = true,
 			raid = true,
 		},
-		messages = { ['*'] = true },
+		messages = {
+			['*'] = true,
+			applied = false,
+			removed = false,
+		},
 		delay = 5,
 		numericalSymbols = (GetLocale() == "deDE"),
 	}
