@@ -16,7 +16,6 @@ local DEFAULT_SETTINGS = {
 		inInstances = {
 			['*'] = false,
 			party = true,
-			raid = true,
 		},
 		messages = {
 			['*'] = true,
