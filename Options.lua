@@ -11,7 +11,7 @@ local options
 
 function addon:GetOptionHandler(target)
 	local target = target
-	return {
+	local handler = {
 		GetDatabase = function(self, info)
 			return target.db.profile, info.args or info[#info]
 		end,
@@ -35,10 +35,13 @@ function addon:GetOptionHandler(target)
 				target:OnConfigChanged(key, ...)
 			end
 		end,
-		IsDisabled = function(self)
-			return not target:IsEnabled()
-		end,
 	}
+	if target ~= addon then
+		handler.IsDisabled = function(self) return not addon.db.profile.modules[target.moduleName] end
+	else
+		handler.IsDisabled = function(self) return false end
+	end
+	return handler
 end
 
 function addon.GetOptions()
@@ -66,10 +69,24 @@ function addon.GetOptions()
 				args = {
 					test = {
 						name = L['Test'],
-						order = 10,						
+						order = 10,
 						desc = L['Simulate some spell events to test the addon.'],
 						type = 'execute',
 						func = function() self:Test() end,
+					},
+					inInstances = {
+						name = L['Enabled in ...'],
+						desc = L['AdiCCMonitor will completely disable itself in unchecked zones.'],
+						order = 15,
+						type = 'multiselect',
+						values = {
+							raid = L['Raid instances'],
+							party = L['5-man instances'],
+							arena = L['Arenas'],
+							pvp = L['Battlegrounds'],
+							none = L['Open world'],
+						},
+						disabled = function() return self.testing end,
 					},
 					modules = {
 						name = L['Enabled modules'],

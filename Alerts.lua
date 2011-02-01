@@ -35,12 +35,12 @@ function mod:OnEnable()
 	prefs = self.db.profile
 	self:SetSinkStorage(prefs)
 	self:RegisterEvent('PLAYER_ENTERING_WORLD', 'UpdateListeners')
-	
+
 	self.partySize = 0
 	self.ignoreCaster = {}
 	self:RegisterEvent('PARTY_MEMBERS_CHANGED')
 	self:RegisterEvent('CHAT_MSG_ADDON')
-	
+
 	self:RegisterMessage('AdiCCMonitor_TestFlagChanged', 'UpdateListeners')
 	self:UpdateListeners()
 end
@@ -281,9 +281,29 @@ function mod:Alert(messageID, caster, ...)
 end
 
 function mod:GetOptions()
+
+	-- Dynamic instance type list
+	local allInstanceList = {
+		raid = L['Raid instances'],
+		party = L['5-man instances'],
+		arena = L['Arenas'],
+		pvp = L['Battlegrounds'],
+		none = L['Open world'],
+	}
+	local instanceList = {}
+	local function GetInstanceList()
+		for key, label in pairs(allInstanceList) do
+			instanceList[key] = addon.db.profile.inInstances[key] and label or nil
+		end
+		return instanceList
+	end
+
+	-- Fetch LibSink options
 	local sinkOpts = self:GetSinkAce3OptionsDataTable()
 	sinkOpts.order = 40
 	sinkOpts.inline = true
+
+	-- Finally our options
 	return {
 		name = L['Alerts'],
 		type = 'group',
@@ -297,13 +317,7 @@ function mod:GetOptions()
 				desc = L['AdiCCMonitor will keep quiet in unchecked zones.'],
 				order = 5,
 				type = 'multiselect',
-				values = {
-					raid = L['Raid instances'],
-					party = L['5-man instances'],
-					arena = L['Arenas'],
-					pvp = L['Battlegrounds'],
-					none = L['Open world'],
-				},
+				values = GetInstanceList,
 			},
 			messages = {
 				name = L['Events to announce'],

@@ -48,6 +48,10 @@ addon.playerSpellDurations = playerSpellDurations
 
 local DEFAULT_SETTINGS = {
 	profile = {
+		inInstances = {
+			['*'] = false,
+			party = true,
+		},
 		modules = { ['*'] = true },
 		onlyMine = false,
 	}
@@ -118,6 +122,12 @@ function addon:OnInitialize()
 
 	self:RegisterChatCommand("acm", "ChatCommand", true)
 	self:RegisterChatCommand(addonName, "ChatCommand", true)
+
+	-- Static registering
+	self.RegisterEvent(self.name, "PLAYER_ENTERING_WORLD", self.UpdateEnabledState, self)
+	self.RegisterMessage(self.name, "AdiCCMonitor_TestFlagChanged", self.UpdateEnabledState, self)
+
+	self:SetEnabledState(self:ShouldEnable())
 end
 
 function addon:OnEnable()
@@ -137,12 +147,12 @@ function addon:OnEnable()
 	self.RegisterCombatLogEvent(self, 'SPELL_AURA_BROKEN')
 	self.RegisterCombatLogEvent(self, 'SPELL_AURA_BROKEN_SPELL', 'SPELL_AURA_BROKEN')
 	self.RegisterCombatLogEvent(self, 'UNIT_DIED')
-	
+
 	self.RegisterCombatLogEvent(self, 'SPELL_DAMAGE')
 	self.RegisterCombatLogEvent(self, 'RANGE_DAMAGE', 'SPELL_DAMAGE')
 	self.RegisterCombatLogEvent(self, 'SPELL_PERIODIC_DAMAGE', 'SPELL_DAMAGE')
 	self.RegisterCombatLogEvent(self, 'SWING_DAMAGE')
-	
+
 	--@debug@
 	self:RegisterMessage('AdiCCMonitor_SpellAdded', "SpellDebug")
 	self:RegisterMessage('AdiCCMonitor_SpellUpdated', "SpellDebug")
@@ -163,21 +173,39 @@ function addon:OnDisable()
 	self:WipeAll(true)
 end
 
-function addon:Reconfigure()
+function addon:UpdateEnabledState(event)
+	local shouldEnable = self:ShouldEnable()
+	if shouldEnable and not self:IsEnabled() then
+		self:Debug('UpdateEnabledState: enabling on', event)
+		self:Enable()
+	elseif not shouldEnable and self:IsEnabled() then
+		self:Debug('UpdateEnabledState: disabling on', event)
+		self:Disable()
+	end
+end
+
+function addon:ShouldEnable()
+	return self.testing or self.db.profile.inInstances[select(2, IsInInstance())]
+end
+
+function addon:Reconfigure(event)
 	self:Disable()
-	self:Enable()
+	self:UpdateEnabledState(event or "Reconfigure")
 end
 
 function addon:OnConfigChanged(key, ...)
-	if key == 'modules' then
-		local name, enabled = ...
-		if enabled then
-			self:GetModule(name):Enable()
-		else
-			self:GetModule(name):Disable()
+	self:UpdateEnabledState('OnConfigChanged')
+	if self:IsEnabled() then
+		if key == 'modules' then
+			local name, enabled = ...
+			if enabled then
+				self:GetModule(name):Enable()
+			else
+				self:GetModule(name):Disable()
+			end
+		elseif key == 'onlyMine' then
+			self:FullRefresh()
 		end
-	elseif key == 'onlyMine' then
-		self:FullRefresh()
 	end
 end
 
@@ -309,7 +337,7 @@ function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expire
 		self:Debug('Ignore inaccurate data for', spellID, 'on', guid)
 		return
 	end
-	if caster then		
+	if caster then
 		caster = strsplit('-', caster) -- Strip realm name
 	end
 	if expires then
@@ -582,13 +610,17 @@ local usedLogEvents = {}
 local AceEvent = LibStub('AceEvent-3.0')
 
 function combatLogCallbacks:OnUsed(_, event)
+	if not next(usedLogEvents) then
+		addon:Debug('Registered COMBAT_LOG_EVENT_UNFILTERED')
+		AceEvent.RegisterEvent(combatLogCallbacks, 'COMBAT_LOG_EVENT_UNFILTERED', 'OnEvent')
+	end
 	usedLogEvents[event] = true
-	AceEvent.RegisterEvent(combatLogCallbacks, 'COMBAT_LOG_EVENT_UNFILTERED', 'OnEvent')
 end
 
 function combatLogCallbacks:OnUnused(_, event)
 	usedLogEvents[event] = nil
 	if not next(usedLogEvents) then
+		addon:Debug('Unregistered COMBAT_LOG_EVENT_UNFILTERED')
 		AceEvent.UnregisterEvent(combatLogCallbacks, 'COMBAT_LOG_EVENT_UNFILTERED')
 	end
 end
