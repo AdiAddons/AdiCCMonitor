@@ -13,3 +13,7 @@ h2. Known issues and limitations
 * **missing or wrong target symbol**: even though AdiCCMonitor does its best to detect the target symbols, this data is sometimes unavailable. Mouse-hovering the target should allow it to catch up.
 * **inaccurate spell duration**: the duration of some spells can be increased by talents. AdiCCMonitor uses the default duration until you mouse-hover or target the controlled creature. It will detect the accurate duration and remember it per caster. Also note that AdiCCMonitor does not track diminishing returns so it will probably be pretty inaccurate for players.
 * **inaccurate alert for broken spells**: fear, hex and entangling roots do not break on first damage and there is no "broken spell" event form them in contrary to the other spells. AdiCCMonitor tries to guess when those spells are broken but in this case it does not know by who.
+
+h2. Suggestions and feedback
+
+You can submit bugs and suggestions using the "WowAce ticket system":http://www.wowace.com/addons/adiccmonitor/tickets/ (please "check existing tickets":http://www.wowace.com/addons/adiccmonitor/tickets/?status=+ before submitting a new one) and you can help "localizing the configuration interface":http://www.wowace.com/addons/adiccmonitor/localization/. Your Curse account works on wowace.com.
