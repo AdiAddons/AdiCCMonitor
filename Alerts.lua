@@ -117,8 +117,10 @@ local function IsChattySink(sink)
 	return (sink == "RaidWarning") or (sink == "Channel")
 end
 
-function mod:CHAT_MSG_ADDON(_, prefix, message, _, sender)
-	if prefix == self.name and sender then
+local playerName = UnitName("player")
+function mod:CHAT_MSG_ADDON(event, prefix, message, channel, sender)
+	if prefix == self.name and sender and sender ~= playerName then
+		self:Debug(event, prefix, message, channel, sender)
 		sender = strsplit('-', sender)
 		self.ignoreCaster[sender] = IsChattySink(message)
 	end
@@ -224,10 +226,13 @@ for i = 1, 8 do SYMBOLS.textual[i] = '{'.._G["RAID_TARGET_"..i]..'}' end
 for i = 1, 8 do SYMBOLS.numerical[i] = '{rt'..i..'}' end
 
 function mod:Alert(messageID, caster, ...)
-	if not prefs.messages[messageID] or (caster and self.ignoreCaster[caster] and IsChattySink(prefs.sink20OutputSink)) then
+	if not prefs.messages[messageID] then
+		return
+	elseif (caster and self.ignoreCaster[caster] and IsChattySink(prefs.sink20OutputSink)) then
+		self:Debug('Ignored alert for', caster, 'since (s)he uses AdiCCMonitor with a chatty setting')
 		return
 	end
-	self:Debug('Alert', messageID, ...)
+	self:Debug('Alert', messageID, caster, ...)
 	local message
 	if messageID == 'failure' then
 		local spell, reason = ...
