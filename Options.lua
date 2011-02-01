@@ -52,7 +52,7 @@ function addon.GetOptions()
 	profileOpts.order = -1
 
 	options = {
-		name = addonName,
+		name = format("%s v%s", addonName, GetAddOnMetadata(addonName, "Version")),
 		type = 'group',
 		childGroups = 'tab',
 		handler = self:GetOptionHandler(self),
