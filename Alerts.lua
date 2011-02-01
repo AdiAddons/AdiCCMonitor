@@ -269,7 +269,7 @@ function mod:Alert(messageID, caster, ...)
 	if message then
 		message = '<< '..message..' >>'
 		if addon.testing then
-			print(format(L["|cff44ffaa%s would send this alert:|r"], addon.name).."\n"..message)
+			print("|cff44ffaa"..format(L["%s would send this alert:"], addon.name).."|r\n"..message)
 		else
 			self:Pour(message, 1, 1, 1)
 		end
