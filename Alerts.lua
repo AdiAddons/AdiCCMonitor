@@ -196,7 +196,7 @@ end
 
 function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell)
 	self:PlanNextUpdate()
-	if not HasOtherSpells(guid, spellID) then 
+	if not HasOtherSpells(guid, spellID) then
 		self:Alert("removed", spell.caster, spell.target, spell.symbol, spell.expires)
 	end
 end
@@ -226,8 +226,9 @@ for i = 1, 8 do SYMBOLS.numerical[i] = '{rt'..i..'}' end
 
 function mod:Alert(messageID, caster, ...)
 	if not prefs.messages[messageID] then
+		self:Debug(messageID, 'alerts are disabled')
 		return
-	elseif (caster and self.ignoreCaster[caster] and IsChattySink(prefs.sink20OutputSink)) then
+	elseif caster and self.ignoreCaster[caster] and IsChattySink(prefs.sink20OutputSink) then
 		self:Debug('Ignored alert for', caster, 'since (s)he uses AdiCCMonitor with a chatty setting')
 		return
 	end
@@ -238,7 +239,14 @@ function mod:Alert(messageID, caster, ...)
 		message = spell..': '..reason
 	else
 		local target, symbol, expires, moreArg, moreArg2 = ...
-		local targetName = SYMBOLS[prefs.numericalSymbols and "numerical" or "textual"][symbol or false] or target
+		local targetName = target
+		if symbol then
+			if prefs.sink20OutputSink ~= "Channel" or addon.testing then
+				targetName = ICON_LIST[symbol].."0|t"
+			else
+				targetName = SYMBOLS[prefs.numericalSymbols and "numerical" or "textual"][symbol]
+			end
+		end
 		local timeLeft = expires and floor(expires - GetTime() + 0.5)
 		if messageID == 'applied' then
 			message = format(L['%s is affected by %s, lasting %d seconds.'], targetName, moreArg, timeLeft)
