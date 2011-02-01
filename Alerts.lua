@@ -259,7 +259,16 @@ function mod:Alert(messageID, caster, ...)
 		end
 	end
 	if message then
-		self:Pour('<<'..message..'>>', 1, 1, 1)
+		message = '<< '..message..' >>'
+		if addon.testing then
+			print(format(L["|cff44ffaa%s would send this alert:|r"], addon.name).."\n"..message)
+		else
+			self:Pour(message, 1, 1, 1)
+		end
+	--@debug@
+	else
+		self:Debug('No message to send (!)')
+	--@end-debug@
 	end
 end
 
