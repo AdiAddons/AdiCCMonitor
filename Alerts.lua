@@ -23,7 +23,6 @@ local DEFAULT_SETTINGS = {
 			removed = false,
 		},
 		delay = 5,
-		numericalSymbols = (GetLocale() == "deDE"),
 	}
 }
 
@@ -220,9 +219,8 @@ function mod:AdiCCMonitor_SpellBroken(event, guid, spellID, spell, brokenByName,
 	data.earlyAlert = true
 end
 
-local SYMBOLS = { textual = {}, numerical = {} }
-for i = 1, 8 do SYMBOLS.textual[i] = '{'.._G["RAID_TARGET_"..i]..'}' end
-for i = 1, 8 do SYMBOLS.numerical[i] = '{rt'..i..'}' end
+local SYMBOLS = {}
+for i = 1, 8 do SYMBOLS[i] = '{'.._G["RAID_TARGET_"..i]..'}' end
 
 function mod:Alert(messageID, caster, ...)
 	if not prefs.messages[messageID] then
@@ -244,7 +242,7 @@ function mod:Alert(messageID, caster, ...)
 			if prefs.sink20OutputSink ~= "Channel" or addon.testing then
 				targetName = ICON_LIST[symbol].."0|t"
 			else
-				targetName = SYMBOLS[prefs.numericalSymbols and "numerical" or "textual"][symbol]
+				targetName = SYMBOLS[symbol]
 			end
 		end
 		local timeLeft = expires and floor(expires - GetTime() + 0.5)
@@ -300,7 +298,7 @@ function mod:GetOptions()
 
 	-- Fetch LibSink options
 	local sinkOpts = self:GetSinkAce3OptionsDataTable()
-	sinkOpts.order = 40
+	sinkOpts.order = 30
 	sinkOpts.inline = true
 
 	-- Finally our options
@@ -346,12 +344,6 @@ function mod:GetOptions()
 				step = 1,
 				disabled = function(info) return info.handler:IsDisabled(info) or not prefs.messages.warning end,
 				order = 20,
-			},
-			numericalSymbols = {
-				name = L['Alternative symbol strings'],
-				desc = format(L["Use this option if %s or %s are not displayed as icons in chat frames. AdiCCMonitor will use {rt1}..{rt8} instead. Note: stock chat bubbles do not display any of them anyway."], SYMBOLS.textual[1], SYMBOLS.textual[8]),
-				type = "toggle",
-				order = 30,
 			},
 			output = sinkOpts,
 		},
