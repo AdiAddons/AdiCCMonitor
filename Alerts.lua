@@ -37,9 +37,10 @@ function mod:OnEnable()
 	self:RegisterEvent('PLAYER_ENTERING_WORLD', 'UpdateListeners')
 
 	self.partySize = 0
-	self.ignoreCaster = {}
+	self.announcers = {}
 	self:RegisterEvent('PARTY_MEMBERS_CHANGED')
 	self:RegisterEvent('CHAT_MSG_ADDON')
+	self:PARTY_MEMBERS_CHANGED('OnEnable')
 
 	self:RegisterMessage('AdiCCMonitor_TestFlagChanged', 'UpdateListeners')
 	self:UpdateListeners()
@@ -91,10 +92,30 @@ function mod:UpdateListeners()
 	end
 end
 
+local playerName = UnitName("player")
+
 function mod:AdvertizeParty()
 	self:Debug("AdvertizeParty")
 	local chan = (select(2, IsInInstance()) == "pvp") and "BATTLEGROUND" or "RAID"
 	SendAddonMessage(self.name, prefs.sink20OutputSink, chan)
+end
+
+function mod:SelectAnnouncer()
+	self.selectTimer = nil
+	self.announcer = playerName
+	if prefs.sink20OutputSink == "Channel" then
+		-- Select a group announcer only if we are sending alerts to a chat channel
+		for name in pairs(self.announcers) do
+			if not UnitInParty(name) and not UnitInRaid(name) then
+				-- Remove players that left
+				self.announces[name] = nil
+			elseif name < self.announcer then
+				-- Select the announcer with the "lower" name, simple arbitrary rule
+				self.announcer = name
+			end
+		end
+		self:Debug('Group announcer:', self.announcer)
+	end
 end
 
 function mod:PARTY_MEMBERS_CHANGED()
@@ -105,23 +126,25 @@ function mod:PARTY_MEMBERS_CHANGED()
 	if partySize ~= self.partySize then
 		if partySize > self.partySize then
 			self:AdvertizeParty()
-		elseif partySize == 0 then
-			wipe(self.ignoreCaster)
 		end
 		self.partySize = partySize
+		if not self.selectTimer then
+			self.selectTimer = self:ScheduleTimer('SelectAnnouncer', 2)
+		end
 	end
 end
 
-local function IsChattySink(sink)
-	return (sink == "RaidWarning") or (sink == "Channel")
-end
-
-local playerName = UnitName("player")
 function mod:CHAT_MSG_ADDON(event, prefix, message, channel, sender)
 	if prefix == self.name and sender and sender ~= playerName then
 		self:Debug(event, prefix, message, channel, sender)
 		sender = strsplit('-', sender)
-		self.ignoreCaster[sender] = IsChattySink(message)
+		local announce = (message == "Channel") or nil
+		if announce ~= self.announcers[sender] then
+			self.announcers[sender] = announce
+			if not self.selectTimer then
+				self.selectTimer = self:ScheduleTimer('SelectAnnouncer', 2)
+			end
+		end
 	end
 end
 
@@ -237,8 +260,8 @@ function mod:Alert(messageID, caster, ...)
 	if not prefs.messages[messageID] then
 		self:Debug(messageID, 'alerts are disabled')
 		return
-	elseif caster and self.ignoreCaster[caster] and IsChattySink(prefs.sink20OutputSink) then
-		self:Debug('Ignored alert for', caster, 'since (s)he uses AdiCCMonitor with a chatty setting')
+	elseif caster ~= playerName and self.announcer ~= playerName then
+		self:Debug('Ignored alert for', caster, 'since we are not the group announcer')
 		return
 	end
 	self:Debug('Alert', messageID, caster, ...)
