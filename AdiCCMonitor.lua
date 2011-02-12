@@ -132,6 +132,12 @@ end
 
 function addon:OnEnable()
 	prefs = self.db.profile
+	
+	if not self.processFrame then
+		self.processFrame = CreateFrame("Frame")
+		self.processFrame:SetScript('OnUpdate', function() self:ProcessUpdates() end)
+	end
+	self.processFrame:Hide()
 
 	self:RegisterEvent('UNIT_AURA')
 	self:RegisterEvent('UNIT_TARGET')
@@ -142,10 +148,10 @@ function addon:OnEnable()
 	self:RegisterEvent('PLAYER_LEAVING_WORLD')
 
 	self.RegisterCombatLogEvent(self, 'SPELL_AURA_APPLIED')
-	self.RegisterCombatLogEvent(self, 'SPELL_AURA_REFRESH')
+	self.RegisterCombatLogEvent(self, 'SPELL_AURA_REFRESH', 'SPELL_AURA_APPLIED')
 	self.RegisterCombatLogEvent(self, 'SPELL_AURA_REMOVED')
 	self.RegisterCombatLogEvent(self, 'SPELL_AURA_BROKEN')
-	self.RegisterCombatLogEvent(self, 'SPELL_AURA_BROKEN_SPELL', 'SPELL_AURA_BROKEN')
+	self.RegisterCombatLogEvent(self, 'SPELL_AURA_BROKEN_SPELL')
 	self.RegisterCombatLogEvent(self, 'UNIT_DIED')
 
 	self.RegisterCombatLogEvent(self, 'SPELL_DAMAGE')
@@ -171,6 +177,7 @@ end
 function addon:OnDisable()
 	self:UnregisterAllCombatLogEvents()
 	self:WipeAll(true)
+	self.processFrame:Hide()
 end
 
 function addon:UpdateEnabledState(event)
@@ -319,6 +326,39 @@ function addon:IterateTargetSpells(guid)
 	end
 end
 
+--------------------------------------------------------------------------------
+-- Update processing
+--------------------------------------------------------------------------------
+
+function addon:ProcessUpdates()
+	self.processFrame:Hide()
+	self:Debug('ProcessUpdates')
+	for guid, data in pairs(GUIDs) do
+		local spells = data.spells
+		for spellID, spell in pairs(spells) do
+			if spell.added or spell.updated then
+				self:SendMessage(spell.updated and 'AdiCCMonitor_SpellUpdated' or 'AdiCCMonitor_SpellAdded', guid, spellID, spell)
+				spell.added, spell.updated = nil, nil
+			end
+			if spell.removed then
+				local broken, byName, bySpell = spell.broken, spell.brokenByName, spell.brokenBySpell
+				if not broken and spell.expires > GetTime() + 1 then
+					if data.damaged then
+						broken, byName, bySpell =	true, data.lastDamagedByName, data.lastDamagedBySpell
+					else
+						broken = true
+					end
+				end
+				self:SendMessage(broken and 'AdiCCMonitor_SpellBroken' or 'AdiCCMonitor_SpellRemoved', guid, spellID, spell, byName, bySpell)
+				spells[spellID] = del(spell)
+			end
+		end
+		if not next(spells) then
+			delGUID(guid)
+		end
+	end
+end
+
 function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expires, isMine, caster, accurate)
 	local spell, isNew = self:GetSpellData(guid, spellID)
 	if spell and not isNew and RESILIENT_SPELLS[spellID] and not accurate and spell.accurate then
@@ -342,20 +382,37 @@ function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expire
 		spell.expires = expires
 		spell.caster = caster
 		spell.isMine = isMine
-		self:SendMessage(isNew and 'AdiCCMonitor_SpellAdded' or 'AdiCCMonitor_SpellUpdated', guid, spellID, spell)
+		if isNew then
+			self:Debug('New spell:', name, 'on', target, 'by', caster)
+			spell.added = true
+		elseif not spell.added then
+			self:Debug('Spell updated:', name, 'on', target, 'by', caster)
+			spell.updated = true
+		end
+		self.processFrame:Show()
 	end
 end
 
 function addon:RemoveSpell(guid, spellID, silent, brokenByName, brokenBySpell)
 	local spell, _, data = self:GetSpellData(guid, spellID, true)
 	if spell then
-		if not silent then
-			local broken = not UNBREAKABLE_SPELLS[spellID] and (brokenByName or spell.expires > GetTime() + 1)
-			self:SendMessage(broken and 'AdiCCMonitor_SpellBroken' or 'AdiCCMonitor_SpellRemoved', guid, spellID, spell, brokenByName, brokenBySpell)
-		end
-		data.spells[spellID] = del(spell)
-		if not next(data.spells) then
-			delGUID(guid)
+		if silent then
+			del(spell)
+			data.spells[spellID] = nil
+			if not next(data.spells) then
+				delGUID(guid)
+			end
+		else
+			if brokenByName then
+				spell.broken, spell.brokenByName, spell.brokenBySpell = true, brokenByName, brokenBySpell
+			--@debug@
+				self:Debug('Spell broken:', spell.name, 'on', spell.target, 'by', brokenByName, 'with', brokenBySpell)
+			elseif not spell.removed then
+				self:Debug('Spell removed:', spell.name, 'on', spell.target)
+			--@end-debug@
+			end
+			spell.removed = true
+			self.processFrame:Show()
 		end
 	end
 end
@@ -363,6 +420,9 @@ end
 function addon:RemoveTarget(guid, silent)
 	guidSymbols[guid] = nil
 	if GUIDs[guid] then
+		--@debug@
+		self:Debug('Target removed:', guid)
+		--@end-debug@
 		if not silent then
 			self:SendMessage('AdiCCMonitor_WipeTarget', guid)
 		end
@@ -382,11 +442,11 @@ function addon:RefreshFromUnit(unit)
 	if not guid or not UnitCanAttack("player", unit) then
 		return
 	end
+	local filter = prefs.onlyMine and "PLAYER" or ""
 	wipe(seen)
 	-- Scan current debuffs
-	local filter = prefs.onlyMine and "PLAYER" or ""
 	local targetName = UnitName(unit)
-	local symbol = GetRaidTargetIndex(unit)
+ 	local symbol = GetRaidTargetIndex(unit)
 	guidSymbols[guid] = symbol
 	local index = 0
 	repeat
@@ -493,34 +553,21 @@ local function GetDefaultDuration(guid, spellID)
 end
 
 function addon:SPELL_AURA_APPLIED(event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, spellName)
-	self:Debug(event, sourceName, spellName, destGUID)
 	local isMine = band(sourceFlags, COMBATLOG_OBJECT_AFFILIATION_MINE) ~= 0
 	local duration, isAccurate = GetDefaultDuration(sourceGUID, spellID)
 	self:UpdateSpell(destGUID, spellID, spellName, destName, GetSymbol(destGUID, destFlags), duration, GetTime()+duration, isMine, sourceName, isAccurate)
 end
 
-function addon:SPELL_AURA_REFRESH(...)
-	-- REFRESH events are sent for resilient spells when their target takes damages.
-	if not RESILIENT_SPELLS[select(8, ...)] then
-		return self:SPELL_AURA_APPLIED(...)
-	end
-end
-
 function addon:SPELL_AURA_REMOVED(event, _, _, _, destGUID, _, _, spellID)
-	self:Debug(event, destGUID, spellID)
-	local data = GUIDs[destGUID]
-	if data then
-		if RESILIENT_SPELLS[spellID] then
-			self:RemoveSpell(destGUID, spellID, false, data.lastDamagedBy, data.lastDamagedWith)
-		else
-			self:RemoveSpell(destGUID, spellID)
-		end
-	end
+	self:RemoveSpell(destGUID, spellID)
 end
 
-function addon:SPELL_AURA_BROKEN(event, _, sourceName, _, destGUID, _, _, spellID, _, _, _, brokenBySpell)
-	self:Debug(event, sourceName, brokenBySpell, destGUID)
-	self:RemoveSpell(destGUID, spellID, false, sourceName, event == 'SPELL_AURA_BROKEN_SPELL' and brokenBySpell or nil)
+function addon:SPELL_AURA_BROKEN(event, _, sourceName, _, destGUID, _, _, spellID)
+	self:RemoveSpell(destGUID, spellID, false, sourceName)
+end
+
+function addon:SPELL_AURA_BROKEN_SPELL(event, _, sourceName, _, destGUID, _, _, spellID, _, _, _, brokenBySpell)
+	self:RemoveSpell(destGUID, spellID, false, sourceName, brokenBySpell)
 end
 
 function addon:UNIT_DIED(_, _, _, _, destGUID)
@@ -531,8 +578,10 @@ function addon:SPELL_DAMAGE(event, sourceGUID, sourceName, sourceFlags, destGUID
 	if spellID ~= 339 then -- Ignore damage from entangling roots
 		local data = GUIDs[destGUID]
 		if data then
-			self:Debug(event, sourceName, destName, spellName)
-			data.lastDamagedBy, data.lastDamagedWith = sourceName, spellName
+			--@debug@
+			self:Debug('Damaged target:', destName, destGUID, 'by', sourceName, 'with', spellName)
+			--@end-debug@
+			data.damaged, data.lastDamagedByName, data.lastDamagedBySpell = true, sourceName, spellName
 		end
 	end
 end
