@@ -22,6 +22,7 @@ local DEFAULT_SETTINGS = {
 			applied = false,
 			removed = false,
 		},
+		ignoreTank = true,
 		delay = 5,
 	}
 }
@@ -175,6 +176,7 @@ function mod:PlanNextUpdate()
 			end
 		else
 			data.warningAlert = nil
+			data.removedAlert = nil
 		end
 	end
 	if nextTime then
@@ -186,7 +188,7 @@ end
 function mod:AdiCCMonitor_SpellAdded(event, guid, spellID, spell)
 	self:PlanNextUpdate()
 	for otherSpellID, otherSpell in addon:IterateTargetSpells(guid) do
-		if otherSpellID ~= spellID and otherSpell.expires > spell.expires then
+		if otherSpellID ~= spellID and otherSpell.expires > spell.expires + 1 then
 			return
 		end
 	end
@@ -195,28 +197,37 @@ end
 
 function mod:AdiCCMonitor_SpellRemoved(event, guid, spellID, spell)
 	self:PlanNextUpdate()
-	if not HasOtherSpells(guid, spellID) then
+	if HasOtherSpells(guid, spellID) then return end
+	local data = addon:GetGUIDData(guid)
+	if not data.removedAlert then
+		data.removedAlert = true
 		self:Alert("removed", spell.caster, spell.target, spell.symbol, spell.expires)
 	end
 end
 
 function mod:AdiCCMonitor_SpellBroken(event, guid, spellID, spell, brokenByName, brokenBySpell)
 	self:PlanNextUpdate()
+	if HasOtherSpells(guid, spellID) then return end
 	local data = addon:GetGUIDData(guid)
-	if prefs.messages.early and not data.earlyAlert and not data.warningAlert and not HasOtherSpells(guid, spellID) then
-		local role
-		if brokenByName then
-			role = UnitGroupRolesAssigned(brokenByName)
-			if not role then
-				local raidID = UnitInRaid(brokenByName)
-				role = raidID and select(10, GetRaidRosterInfo(raidID))
-			end
+	if data.removedAlert then return end
+	data.removedAlert = true
+	if prefs.ignoreTank and brokenByName then
+		local role = UnitGroupRolesAssigned(brokenByName)
+		if not role then
+			local raidID = UnitInRaid(brokenByName)
+			role = raidID and select(10, GetRaidRosterInfo(raidID))
 		end
-		if role ~= "TANK" then
-			self:Alert("early", spell.caster, spell.target, spell.symbol, spell.expires, brokenByName, brokenBySpell)
+		if role == "TANK" then
+			return
 		end
 	end
-	data.earlyAlert = true
+	if prefs.messages.early then
+		if not data.warningAlert then
+			self:Alert("early", spell.caster, spell.target, spell.symbol, spell.expires, brokenByName, brokenBySpell)
+		end
+	else
+		self:Alert("removed", spell.caster, spell.target, spell.symbol, spell.expires)
+	end
 end
 
 local SYMBOLS = {}
@@ -298,7 +309,7 @@ function mod:GetOptions()
 
 	-- Fetch LibSink options
 	local sinkOpts = self:GetSinkAce3OptionsDataTable()
-	sinkOpts.order = 30
+	sinkOpts.order = 800
 	sinkOpts.inline = true
 
 	-- Finally our options
@@ -344,6 +355,12 @@ function mod:GetOptions()
 				step = 1,
 				disabled = function(info) return info.handler:IsDisabled(info) or not prefs.messages.warning end,
 				order = 20,
+			},
+			ignoreTank = {
+				name = L['Ignore tanks'],
+				desc = L['Keep quiet when a character flagged as a tank breaks a spell.'],
+				type = 'toggle',
+				order = 30,
 			},
 			output = sinkOpts,
 		},
