@@ -239,71 +239,21 @@ do
 		end
 		return t
 	end
-	function del(t)
+	function del(t, recursive)
+		if recursive then
+			for k, v in pairs(t) do
+				if type(v) == "table" then
+					del(v, true)
+				end
+			end
+		end
 		wipe(t)
 		heap[t] = true
 	end
 end
 
 --------------------------------------------------------------------------------
--- Test
---------------------------------------------------------------------------------
-
-do
-	local AceTimer = LibStub('AceTimer-3.0')
-	local timerSelf = addonName..'Test'
-	local testGUID, testName = "TEST", "DUMMY"
-	local testID
-
-	local function CheckTestMode()
-		if not GUIDs[testGUID] then
-			addon.testing = false
-			addon:SendMessage('AdiCCMonitor_TestFlagChanged', false)
-		end
-	end
-
-	local function RemoveTimer(spellID)
-		addon:RemoveSpell(testGUID, spellID)
-		return CheckTestMode()
-	end
-
-	local function BreakTimer(spellID)
-		addon:RemoveSpell(testGUID, spellID, false, "TEST")
-		return CheckTestMode()
-	end
-
-	function addon:Test()
-		self.testing = not GUIDs[testGUID]
-		self:SendMessage('AdiCCMonitor_TestFlagChanged', self.testing)
-		AceTimer.CancelAllTimers(timerSelf)
-		if self.testing then
-			local now = GetTime()
-			local toBreak = random(1, 5)
-			for i = 1, 5 do
-				local duration, name
-				while not name do
-					testID, duration = next(SPELLS, testID)
-					name = testID and GetSpellInfo(testID)
-				end
-				local timeLeft = random(duration * 2, duration * 10) / 10
-				local expires = now + timeLeft
-				local isMine = IsSpellKnown(testID)
-				local symbol = 1 + i % 8
-				self:UpdateSpell(testGUID, testID, name, testName, symbol, duration, expires, isMine, "*Test*", true)
-				if i == toBreak then
-					AceTimer.ScheduleTimer(timerSelf, BreakTimer, random(1, timeLeft), testID)
-				else
-					AceTimer.ScheduleTimer(timerSelf, RemoveTimer, timeLeft, testID)
-				end
-			end
-		else
-			self:RemoveTarget(testGUID)
-		end
-	end
-end
-
---------------------------------------------------------------------------------
--- Spell data handling
+-- Basic data handling
 --------------------------------------------------------------------------------
 
 function addon:GetGUIDData(guid, passive)
@@ -331,6 +281,44 @@ function addon:GetSpellData(guid, spellID, passive)
 	return spell, isNew, data
 end
 
+local function delGUID(guid)
+	addon:Debug('Cleaning up guid', guid)
+	del(GUIDs[guid], true)
+	GUIDs[guid] = nil
+end
+
+local function spellIterator(t)
+	repeat
+		if t.data then
+			local spell
+			t.spellID, spell = next(t.data.spells, t.spellID)
+			if t.spellID then
+				return t.guid, t.spellID, spell
+			end
+		end
+		t.guid, t.data = next(GUIDs, t.guid)
+	until not t.guid
+	del(t)
+end
+
+function addon:IterateSpells()
+	return spellIterator, new()
+end
+
+function addon:IterateTargets()
+	return pairs(GUIDs)
+end
+
+local function NOOP() end
+function addon:IterateTargetSpells(guid)
+	local data = guid and GUIDs[guid]
+	if data and data.spells then
+		return pairs(data.spells)
+	else
+		return NOOP
+	end
+end
+
 function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expires, isMine, caster, accurate)
 	local spell, isNew = self:GetSpellData(guid, spellID)
 	if spell and not isNew and RESILIENT_SPELLS[spellID] and not accurate and spell.accurate then
@@ -356,17 +344,6 @@ function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expire
 		spell.isMine = isMine
 		self:SendMessage(isNew and 'AdiCCMonitor_SpellAdded' or 'AdiCCMonitor_SpellUpdated', guid, spellID, spell)
 	end
-end
-
-local function delGUID(guid)
-	addon:Debug('Cleaning up guid', guid)
-	local data = GUIDs[guid]
-	for id, spell in pairs(data.spells) do
-		del(spell)
-	end
-	del(data.spells)
-	del(data)
-	GUIDs[guid] = nil
 end
 
 function addon:RemoveSpell(guid, spellID, silent, brokenByName, brokenBySpell)
@@ -397,10 +374,6 @@ function addon:WipeAll(silent)
 	for guid in pairs(GUIDs) do
 		self:RemoveTarget(guid, silent)
 	end
-end
-
-function addon:PLAYER_LEAVING_WORLD()
-	return self:WipeAll()
 end
 
 local seen = {}
@@ -452,41 +425,13 @@ function addon:FullRefresh()
 	end
 end
 
-local function spellIterator(t)
-	repeat
-		if t.data then
-			local spell
-			t.spellID, spell = next(t.data.spells, t.spellID)
-			if t.spellID then
-				return t.guid, t.spellID, spell
-			end
-		end
-		t.guid, t.data = next(GUIDs, t.guid)
-	until not t.guid
-	del(t)
-end
-
-function addon:IterateSpells()
-	return spellIterator, new()
-end
-
-function addon:IterateTargets()
-	return pairs(GUIDs)
-end
-
-local function NOOP() end
-function addon:IterateTargetSpells(guid)
-	local data = guid and GUIDs[guid]
-	if data and data.spells then
-		return pairs(data.spells)
-	else
-		return NOOP
-	end
-end
-
 --------------------------------------------------------------------------------
 -- Event handling
 --------------------------------------------------------------------------------
+
+function addon:PLAYER_LEAVING_WORLD()
+	return self:WipeAll()
+end
 
 function addon:UNIT_AURA(event, unit)
 	if unit == 'target' or unit == 'focus' then
@@ -651,3 +596,61 @@ function combatLogCallbacks:OnEvent(_, _, event, sourceGUID, sourceName, sourceF
 		return self:Fire(event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, ...)
 	end
 end
+
+--------------------------------------------------------------------------------
+-- Test
+--------------------------------------------------------------------------------
+
+do
+	local AceTimer = LibStub('AceTimer-3.0')
+	local timerSelf = addonName..'Test'
+	local testGUID, testName = "TEST", "DUMMY"
+	local testID
+
+	local function CheckTestMode()
+		if not GUIDs[testGUID] then
+			addon.testing = false
+			addon:SendMessage('AdiCCMonitor_TestFlagChanged', false)
+		end
+	end
+
+	local function RemoveTimer(spellID)
+		addon:RemoveSpell(testGUID, spellID)
+		return CheckTestMode()
+	end
+
+	local function BreakTimer(spellID)
+		addon:RemoveSpell(testGUID, spellID, false, "TEST")
+		return CheckTestMode()
+	end
+
+	function addon:Test()
+		self.testing = not GUIDs[testGUID]
+		self:SendMessage('AdiCCMonitor_TestFlagChanged', self.testing)
+		AceTimer.CancelAllTimers(timerSelf)
+		if self.testing then
+			local now = GetTime()
+			local toBreak = random(1, 5)
+			for i = 1, 5 do
+				local duration, name
+				while not name do
+					testID, duration = next(SPELLS, testID)
+					name = testID and GetSpellInfo(testID)
+				end
+				local timeLeft = random(duration * 2, duration * 10) / 10
+				local expires = now + timeLeft
+				local isMine = IsSpellKnown(testID)
+				local symbol = 1 + i % 8
+				self:UpdateSpell(testGUID, testID, name, testName, symbol, duration, expires, isMine, "*Test*", true)
+				if i == toBreak then
+					AceTimer.ScheduleTimer(timerSelf, BreakTimer, random(1, timeLeft), testID)
+				else
+					AceTimer.ScheduleTimer(timerSelf, RemoveTimer, timeLeft, testID)
+				end
+			end
+		else
+			self:RemoveTarget(testGUID)
+		end
+	end
+end
+
