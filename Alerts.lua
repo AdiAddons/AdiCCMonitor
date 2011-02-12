@@ -96,8 +96,12 @@ local playerName = UnitName("player")
 
 function mod:AdvertizeParty()
 	self:Debug("AdvertizeParty")
+	self.advertizeTimer = nil
 	local chan = (select(2, IsInInstance()) == "pvp") and "BATTLEGROUND" or "RAID"
 	SendAddonMessage(self.name, prefs.sink20OutputSink, chan)
+	if not self.selectTimer then
+		self.selectTimer = self:ScheduleTimer('SelectAnnouncer', 2)
+	end
 end
 
 function mod:SelectAnnouncer()
@@ -125,12 +129,13 @@ function mod:PARTY_MEMBERS_CHANGED()
 	end
 	if partySize ~= self.partySize then
 		if partySize > self.partySize then
-			self:AdvertizeParty()
-		end
-		self.partySize = partySize
-		if not self.selectTimer then
+			if not self.advertizeTimer then
+				self.advertizeTimer = self:ScheduleTimer("AdvertizeParty", 1)
+			end
+		elseif not self.selectTimer then
 			self.selectTimer = self:ScheduleTimer('SelectAnnouncer', 2)
 		end
+		self.partySize = partySize
 	end
 end
 
