@@ -265,7 +265,7 @@ function mod:Alert(messageID, caster, ...)
 	if not prefs.messages[messageID] then
 		self:Debug(messageID, 'alerts are disabled')
 		return
-	elseif caster ~= playerName and self.announcer ~= playerName then
+	elseif not addon.testing and caster ~= playerName and self.announcer ~= playerName then
 		self:Debug('Ignored alert for', caster, 'since we are not the group announcer')
 		return
 	end
