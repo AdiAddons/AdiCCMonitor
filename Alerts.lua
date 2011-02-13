@@ -153,9 +153,19 @@ function mod:CHAT_MSG_ADDON(event, prefix, message, channel, sender)
 	end
 end
 
+local ignoredFailures = {
+	[SPELL_FAILED_INTERRUPTED] = true,
+	[SPELL_FAILED_INTERRUPTED_COMBAT] = true,
+	[SPELL_FAILED_NOT_READY] = true,
+	[SPELL_FAILED_TARGETS_DEAD] = true,
+	[ERR_GENERIC_NO_TARGET] = true,
+}
+
 function mod:SPELL_CAST_FAILED(event, _, sourceName, _, _, _, _, _, spellName, _, reason)
-	sourceName = strsplit('-', sourceName)
-	self:Alert('failure', sourceName, spellName, reason)
+	if not ignoredFailures[reason] then
+		sourceName = strsplit('-', sourceName)
+		self:Alert('failure', sourceName, spellName, reason)
+	end
 end
 
 function mod:SPELL_MISSED(event, _, sourceName, _, _, _, _, _, spellName, _, missType)
@@ -273,7 +283,7 @@ function mod:Alert(messageID, caster, ...)
 	local message
 	if messageID == 'failure' then
 		local spell, reason = ...
-		message = spell..': '..reason
+		message = format("%s (%s): %s", spell, caster, reason)
 	else
 		local target, symbol, expires, moreArg, moreArg2 = ...
 		local targetName = target
