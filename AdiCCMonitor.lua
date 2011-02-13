@@ -345,7 +345,7 @@ function addon:ProcessUpdates()
 			if spell.removed then
 				local broken, byName, bySpell = spell.broken, spell.brokenByName, spell.brokenBySpell
 				if not broken and not UNBREAKABLE_SPELLS[spellID] and spell.expires > future then
-					if data.damaged and not RESILIENT_SPELLS[spellID] then
+					if data.damaged and RESILIENT_SPELLS[spellID] then
 						broken, byName, bySpell =	true, data.lastDamagedByName, data.lastDamagedBySpell
 					else
 						broken = true
@@ -650,6 +650,11 @@ function combatLogCallbacks:OnEvent(_, _, event, sourceGUID, sourceName, sourceF
 				return
 			end
 		end
+		--@debug@
+		if event == "SPELL_AURA_APPLIED" or GUIDs[destGUID] then
+			addon:Debug(event, event, sourceGUID, sourceName, destGUID, destName, spellID, ...)
+		end
+		--@end-debug@
 		return self:Fire(event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, ...)
 	end
 end
