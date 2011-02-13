@@ -437,14 +437,12 @@ function addon:WipeAll(silent)
 	end
 end
 
-local seen = {}
 function addon:RefreshFromUnit(unit)
 	local guid = unit and UnitGUID(unit)
 	if not guid or not UnitCanAttack("player", unit) then
 		return
 	end
 	local filter = prefs.onlyMine and "PLAYER" or ""
-	wipe(seen)
 	-- Scan current debuffs
 	local targetName = UnitName(unit)
  	local symbol = GetRaidTargetIndex(unit)
@@ -455,7 +453,6 @@ function addon:RefreshFromUnit(unit)
 		local name, _, _, _, _, duration, expires, caster, _, _, spellID = UnitDebuff(unit, index, nil, filter)
 		if name and spellID and SPELLS[spellID] then
 			local isMine = (caster == 'player' or caster == 'pet' or caster == 'vehicle')
-			seen[spellID] = true
 			self:UpdateSpell(guid, spellID, name, targetName, symbol, duration, expires, isMine, UnitName(caster or ""), true)
 			if VARIABLE_DURATION_SPELLS[spellID] then
 				local casterGUID = UnitGUID(caster)
@@ -465,12 +462,6 @@ function addon:RefreshFromUnit(unit)
 			end
 		end
 	until not name
-	-- Removed debuffs we haven't seen
-	for spellID in self:IterateTargetSpells(guid) do
-		if not seen[spellID] then
-			self:RemoveSpell(guid, spellID)
-		end
-	end
 end
 
 function addon:FullRefresh()
