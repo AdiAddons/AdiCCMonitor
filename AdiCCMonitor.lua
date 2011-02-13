@@ -146,6 +146,7 @@ function addon:OnEnable()
 	self:RegisterEvent('RAID_TARGET_UPDATE', 'FullRefresh')
 	self:RegisterEvent('PLAYER_ENTERING_WORLD', 'FullRefresh')
 	self:RegisterEvent('PLAYER_LEAVING_WORLD')
+	self:RegisterEvent('PLAYER_REGEN_ENABLED')
 
 	self.RegisterCombatLogEvent(self, 'SPELL_AURA_APPLIED')
 	self.RegisterCombatLogEvent(self, 'SPELL_AURA_REFRESH', 'SPELL_AURA_APPLIED')
@@ -482,7 +483,22 @@ end
 --------------------------------------------------------------------------------
 
 function addon:PLAYER_LEAVING_WORLD()
-	return self:WipeAll()
+	return self:WipeAll(false)
+end
+
+function addon:PLAYER_REGEN_ENABLED()
+	local now = GetTime()
+	for guid, data in pairs(GUIDs) do
+		local count = 0
+		for spellID, spell in pairs(data.spells) do
+			if spell.expires > now then
+				count = count  + 1
+			end
+		end
+		if count == 0 then
+			self:RemoveTarget(guid)
+		end
+	end
 end
 
 function addon:UNIT_AURA(event, unit)
