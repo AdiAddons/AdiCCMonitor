@@ -333,6 +333,7 @@ end
 function addon:ProcessUpdates()
 	self.processFrame:Hide()
 	self:Debug('ProcessUpdates')
+	local future = GetTime() + 1
 	for guid, data in pairs(GUIDs) do
 		local spells = data.spells
 		for spellID, spell in pairs(spells) do
@@ -342,8 +343,8 @@ function addon:ProcessUpdates()
 			end
 			if spell.removed then
 				local broken, byName, bySpell = spell.broken, spell.brokenByName, spell.brokenBySpell
-				if not broken and spell.expires > GetTime() + 1 then
-					if data.damaged then
+				if not broken and not UNBREAKABLE_SPELLS[spellID] and spell.expires > future then
+					if data.damaged and not RESILIENT_SPELLS[spellID] then
 						broken, byName, bySpell =	true, data.lastDamagedByName, data.lastDamagedBySpell
 					else
 						broken = true
