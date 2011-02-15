@@ -133,12 +133,6 @@ end
 function addon:OnEnable()
 	prefs = self.db.profile
 	
-	if not self.processFrame then
-		self.processFrame = CreateFrame("Frame")
-		self.processFrame:SetScript('OnUpdate', function() self:ProcessUpdates() end)
-	end
-	self.processFrame:Hide()
-
 	self:RegisterEvent('UNIT_AURA')
 	self:RegisterEvent('UNIT_TARGET')
 	self:RegisterEvent('PLAYER_FOCUS_CHANGED')
@@ -178,7 +172,7 @@ end
 function addon:OnDisable()
 	self:UnregisterAllCombatLogEvents()
 	self:WipeAll(true)
-	self.processFrame:Hide()
+	self:CancelProcessing()
 end
 
 function addon:UpdateEnabledState(event)
@@ -230,6 +224,33 @@ function addon:SpellDebug(event, guid, spellID, spell, ...)
 	end
 end
 --@end-debug@
+
+--------------------------------------------------------------------------------
+-- Event processing 
+--------------------------------------------------------------------------------
+
+do
+	local frame = CreateFrame("Frame")
+	local delay = 0
+	frame:Hide()
+	frame:SetScript('OnUpdate', function(_, elapsed)
+		delay = delay - elapsed
+		if delay > 0 then
+			return
+		end
+		frame:Hide()
+		return addon:ProcessUpdates()
+	end)
+	
+	function addon:ScheduleProcessing()
+		delay = 0.1
+		frame:Show()
+	end
+	
+	function addon:CancelProcessing()
+		frame:Hide()
+	end
+end
 
 --------------------------------------------------------------------------------
 -- Table recycling
@@ -332,7 +353,6 @@ end
 --------------------------------------------------------------------------------
 
 function addon:ProcessUpdates()
-	self.processFrame:Hide()
 	self:Debug('ProcessUpdates')
 	local future = GetTime() + 1
 	for guid, data in pairs(GUIDs) do
@@ -391,7 +411,7 @@ function addon:UpdateSpell(guid, spellID, name, target, symbol, duration, expire
 			self:Debug('Spell updated:', name, 'on', target, 'by', caster)
 			spell.updated = true
 		end
-		self.processFrame:Show()
+		self:ScheduleProcessing()
 	end
 end
 
@@ -414,7 +434,7 @@ function addon:RemoveSpell(guid, spellID, silent, brokenByName, brokenBySpell)
 			--@end-debug@
 			end
 			spell.removed = true
-			self.processFrame:Show()
+			self:ScheduleProcessing()
 		end
 	end
 end
