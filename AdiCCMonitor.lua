@@ -117,6 +117,8 @@ function addon:OnInitialize()
 
 	LibStub('LibDualSpec-1.0'):EnhanceDatabase(self.db, addonName)
 
+	prefs = self.db.profile
+	
 	LibStub('AceConfig-3.0'):RegisterOptionsTable(addonName, self.GetOptions)
 	self.blizPanel = LibStub('AceConfigDialog-3.0'):AddToBlizOptions(addonName, addonName)
 
