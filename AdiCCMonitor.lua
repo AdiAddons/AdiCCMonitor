@@ -364,8 +364,8 @@ function addon:ProcessUpdates()
 			end
 			if spell.removed then
 				local broken, byName, bySpell = spell.broken, spell.brokenByName, spell.brokenBySpell
-				if not broken and not UNBREAKABLE_SPELLS[spellID] and spell.expires > future then
-					if data.damaged and RESILIENT_SPELLS[spellID] then
+				if (not broken or not (byName and bySpell)) and not UNBREAKABLE_SPELLS[spellID] and spell.expires > future then
+					if data.damaged and (RESILIENT_SPELLS[spellID] or not (byName and bySpell)) then
 						broken, byName, bySpell =	true, data.lastDamagedByName, data.lastDamagedBySpell
 					else
 						broken = true
