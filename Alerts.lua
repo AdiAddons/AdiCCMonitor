@@ -112,7 +112,7 @@ function mod:SelectAnnouncer()
 		for name in pairs(self.announcers) do
 			if not UnitInParty(name) and not UnitInRaid(name) then
 				-- Remove players that left
-				self.announces[name] = nil
+				self.announcers[name] = nil
 			elseif name < self.announcer then
 				-- Select the announcer with the "lower" name, simple arbitrary rule
 				self.announcer = name
