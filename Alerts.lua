@@ -168,7 +168,7 @@ function mod:CHAT_MSG_ADDON(event, prefix, message, channel, sender)
 		self:Debug("Message from", sender, ":", message)
 		sender = strsplit('-', sender)
 		if message == "QUERY" then
-			self.announcer = self.chatty and playerName or nil
+			self.announcer = playerName
 			self:CancelTimer("SendQuery")
 			self:ScheduleTimer("SendReply", 1)
 		elseif message == "REPLY" then
@@ -189,7 +189,7 @@ function mod:PARTY_MEMBERS_CHANGED()
 		if self.partySize == 0 or (self.announcer and not UnitInParty(self.announcer) and not UnitInRaid(self.announcer)) then
 			self:ScheduleTimer("SendQuery", 2)
 		elseif partySize == 0 then
-			self.announcer = nil
+			self.announcer = playerName
 			self:CancelTimer("SendQuery")
 			self:CancelTimer("SendReply")
 		end
@@ -312,7 +312,7 @@ function mod:Alert(messageID, caster, ...)
 	if not prefs.messages[messageID] then
 		self:Debug(messageID, 'alerts are disabled')
 		return
-	elseif not addon.testing and caster ~= playerName and self.announcer ~= playerName then
+	elseif not addon.testing and caster ~= playerName and self.chatty and self.announcer ~= playerName then
 		self:Debug('Ignored alert for', caster, 'since we are not the group announcer')
 		return
 	end
