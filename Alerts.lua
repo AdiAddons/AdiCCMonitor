@@ -37,7 +37,7 @@ function mod:OnEnable()
 	self:RegisterEvent('PLAYER_ENTERING_WORLD', 'UpdateListeners')
 
 	self.partySize = 0
-	self.announcers = {}
+	self.announcer = nil
 	self:RegisterEvent('PARTY_MEMBERS_CHANGED')
 	self:RegisterEvent('CHAT_MSG_ADDON')
 	self:PARTY_MEMBERS_CHANGED('OnEnable')
@@ -49,10 +49,14 @@ end
 function mod:OnDisable()
 	addon.UnregisterAllCombatLogEvents(self)
 	self:CancelAllTimers()
+	self:UpdateChattiness()
 end
 
 function mod:OnConfigChanged(key, ...)
 	self:UpdateListeners()
+	if key == "sink20OutputSink" then
+		self:ScheduleTimer("UpdateChattiness", 1)
+	end
 end
 
 function mod:UpdateListeners()
@@ -70,6 +74,7 @@ function mod:UpdateListeners()
 			self:RegisterMessage('AdiCCMonitor_WipeTarget', 'PlanNextUpdate')
 			self.listening = true
 			self:Debug('Started listening')
+			self:ScheduleTimer("UpdateChattiness", 1)
 		end
 		if prefs.messages.failure then
 			addon.RegisterCombatLogEvent(self, 'SPELL_CAST_FAILED')
@@ -89,6 +94,7 @@ function mod:UpdateListeners()
 		self:CancelAllTimers()
 		self.listening = nil
 		self:Debug('Stopped listening')
+		self:ScheduleTimer("UpdateChattiness", 1)
 	end
 end
 
@@ -128,31 +134,49 @@ end
 
 local playerName = UnitName("player")
 
-function mod:AdvertizeParty()
-	self:Debug("AdvertizeParty")
-	self.advertizeTimer = nil
-	local chan = (select(2, IsInInstance()) == "pvp") and "BATTLEGROUND" or "RAID"
-	SendAddonMessage(self.name, prefs.sink20OutputSink, chan)
-	if not self.selectTimer then
-		self.selectTimer = self:ScheduleTimer('SelectAnnouncer', 2)
+function mod:SendMessage(message)
+	local channel = (select(2, IsInInstance()) == "pvp") and "BATTLEGROUND" or "RAID"
+	if self.partySize == 0 then
+		self:CHAT_MSG_ADDON("SendMessage", self.name, message, channel, playerName)
+	else
+		self:Debug('Sending to', channel, ':', message)
+		SendAddonMessage(self.name, message, chan)
 	end
 end
 
-function mod:SelectAnnouncer()
-	self.selectTimer = nil
-	self.announcer = playerName
-	if prefs.sink20OutputSink == "Channel" then
-		-- Select a group announcer only if we are sending alerts to a chat channel
-		for name in pairs(self.announcers) do
-			if not UnitInParty(name) and not UnitInRaid(name) then
-				-- Remove players that left
-				self.announcers[name] = nil
-			elseif name < self.announcer then
-				-- Select the announcer with the "lower" name, simple arbitrary rule
-				self.announcer = name
+function mod:SendQuery()
+	self:SendMessage("QUERY")
+end
+
+function mod:UpdateChattiness()
+	self:CancelTimer("SendQuery")
+	local chatty = self:IsEnabled() and self.listening and prefs.sink20OutputSink == "Channel" or false
+	if chatty ~= self.chatty then
+		self.chatty = chatty
+		self:SendQuery()
+	end
+end
+
+function mod:SendReply()
+	if self.chatty then
+		self:SendMessage("REPLY")
+	end
+end
+
+function mod:CHAT_MSG_ADDON(event, prefix, message, channel, sender)
+	if prefix == self.name and sender then
+		self:Debug("Message from", sender, ":", message)
+		sender = strsplit('-', sender)
+		if message == "QUERY" then
+			self.announcer = self.chatty and playerName or nil
+			self:CancelTimer("SendQuery")
+			self:ScheduleTimer("SendReply", 1)
+		elseif message == "REPLY" then
+			if not self.announcer or sender < self.announcer then
+				self.announcer = sender
+				self:Debug('New announcer:', self.announcer)
 			end
 		end
-		self:Debug('Group announcer:', self.announcer)
 	end
 end
 
@@ -162,28 +186,14 @@ function mod:PARTY_MEMBERS_CHANGED()
 		partySize = GetNumPartyMembers()
 	end
 	if partySize ~= self.partySize then
-		if partySize > self.partySize then
-			if not self.advertizeTimer then
-				self.advertizeTimer = self:ScheduleTimer("AdvertizeParty", 1)
-			end
-		elseif not self.selectTimer then
-			self.selectTimer = self:ScheduleTimer('SelectAnnouncer', 2)
+		if self.partySize == 0 or (self.announcer and not UnitInParty(self.announcer) and not UnitInRaid(self.announcer)) then
+			self:ScheduleTimer("SendQuery", 2)
+		elseif partySize == 0 then
+			self.announcer = nil
+			self:CancelTimer("SendQuery")
+			self:CancelTimer("SendReply")
 		end
 		self.partySize = partySize
-	end
-end
-
-function mod:CHAT_MSG_ADDON(event, prefix, message, channel, sender)
-	if prefix == self.name and sender and sender ~= playerName then
-		self:Debug(event, prefix, message, channel, sender)
-		sender = strsplit('-', sender)
-		local announce = (message == "Channel") or nil
-		if announce ~= self.announcers[sender] then
-			self.announcers[sender] = announce
-			if not self.selectTimer then
-				self.selectTimer = self:ScheduleTimer('SelectAnnouncer', 2)
-			end
-		end
 	end
 end
 
@@ -376,6 +386,14 @@ function mod:GetOptions()
 	local sinkOpts = self:GetSinkAce3OptionsDataTable()
 	sinkOpts.order = 800
 	sinkOpts.inline = true
+	local sinkOptsSet = sinkOpts.set
+	sinkOpts.set =  function(info, ...) 
+		sinkOptsSet(info, ...)
+		local key = info[#info]
+		if key ~= "ScrollArea" and key ~= "Sticky" then
+			return self:OnConfigChanged("sink20OutputSink")
+		end
+	end
 
 	-- Finally our options
 	return {
