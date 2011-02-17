@@ -48,7 +48,7 @@ end
 
 function mod:OnDisable()
 	addon.UnregisterAllCombatLogEvents(self)
-	self.runningTimer = nil
+	self:CancelAllTimers()
 end
 
 function mod:OnConfigChanged(key, ...)
@@ -86,10 +86,44 @@ function mod:UpdateListeners()
 		self:UnregisterMessage('AdiCCMonitor_SpellUpdated')
 		self:UnregisterMessage('AdiCCMonitor_WipeTarget')
 		addon.UnregisterAllCombatLogEvents(self)
-		self:CancelRunningTimer()
+		self:CancelAllTimers()
 		self.listening = nil
 		self:Debug('Stopped listening')
 	end
+end
+
+-- Slightly facade to AceTimer that allows easy rescheduling
+do
+	local AceTimer = LibStub('AceTimer-3.0')
+	local timers = {}
+	
+	local function ExecTimer(name)
+		timers[name] = nil
+		mod:Debug('Timer:', name)
+		return mod[name](mod)
+	end
+	
+	function mod:ScheduleTimer(name, delay)
+		if timers[name] then
+			AceTimer.CancelTimer(self, timers[name])
+		end
+		self:Debug('Scheduling', name, 'in', delay, 'secs')
+		timers[name] = AceTimer.ScheduleTimer(self, ExecTimer, delay, name)
+	end
+	
+	function mod:CancelTimer(name)
+		if timers[name] then
+			self:Debug('Canceling', name)
+			AceTimer.CancelTimer(mod, timers[name], true)
+			timers[name] = nil
+		end
+	end
+	
+	function mod:CancelAllTimers()
+		AceTimer.CancelAllTimers(self)
+		wipe(timers)
+	end
+	
 end
 
 local playerName = UnitName("player")
@@ -173,13 +207,6 @@ function mod:SPELL_MISSED(event, _, sourceName, _, _, _, _, _, spellName, _, mis
 	self:Alert('failure', sourceName, spellName, _G[missType] or missType)
 end
 
-function mod:CancelRunningTimer()
-	if self.runningTimer then
-		self:CancelTimer(self.runningTimer, true)
-		self.runningTimer = nil
-	end
-end
-
 local function HasOtherSpells(guid, ignoreSpellID)
 	for spellID, spell in addon:IterateTargetSpells(guid) do
 		if ignoreSpellID ~= spellID then
@@ -189,7 +216,7 @@ local function HasOtherSpells(guid, ignoreSpellID)
 end
 
 function mod:PlanNextUpdate()
-	self:CancelRunningTimer()
+	self:CancelTimer('PlanNextUpdate')
 	if not prefs.messages.warning then return end
 	self:Debug('PlanNextUpdate')
 	local delay = prefs.delay
@@ -219,7 +246,7 @@ function mod:PlanNextUpdate()
 	end
 	if nextTime then
 		self:Debug('Next update in', nextTime - now)
-		self.runningTimer = self:ScheduleTimer('PlanNextUpdate', nextTime - now)
+		self:ScheduleTimer('PlanNextUpdate', nextTime - now)
 	end
 end
 
