@@ -140,7 +140,7 @@ function mod:SendMessage(message)
 		self:CHAT_MSG_ADDON("SendMessage", self.name, message, channel, playerName)
 	else
 		self:Debug('Sending to', channel, ':', message)
-		SendAddonMessage(self.name, message, chan)
+		SendAddonMessage(self.name, message, channel)
 	end
 end
 
