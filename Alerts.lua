@@ -4,6 +4,17 @@ Copyright 2011 Adirelle (adirelle@tagada-team.net)
 All rights reserved.
 --]]
 
+-- Copy globals in local scope to easily spot global leaks with "luac -l | grep GLOBAL"
+local _G = _G
+local LibStub, UnitName, IsInInstance = _G.LibStub, _G.UnitName, _G.IsInInstance
+local wipe, select, strsplit, format = _G.wipe, _G.select, _G.strsplit, _G.format
+local floor, print, pairs = _G.floor, _G.print, _G.pairs
+local GetNumRaidMembers, GetNumPartyMembers = _G.GetNumRaidMembers, _G.GetNumPartyMembers
+local UnitInParty, UnitInRaid, GetTime = _G.UnitInParty, _G.UnitInRaid, _G.GetTime
+local UnitGroupRolesAssigned, GetRaidRosterInfo = _G.UnitGroupRolesAssigned, _G.GetRaidRosterInfo
+local SendAddonMessage = _G.SendAddonMessage
+local ICON_LIST = _G.ICON_LIST
+
 local addonName, addon = ...
 local L = addon.L
 
@@ -198,11 +209,11 @@ function mod:PARTY_MEMBERS_CHANGED()
 end
 
 local ignoredFailures = {
-	[SPELL_FAILED_INTERRUPTED] = true,
-	[SPELL_FAILED_INTERRUPTED_COMBAT] = true,
-	[SPELL_FAILED_NOT_READY] = true,
-	[SPELL_FAILED_TARGETS_DEAD] = true,
-	[ERR_GENERIC_NO_TARGET] = true,
+	[_G.SPELL_FAILED_INTERRUPTED] = true,
+	[_G.SPELL_FAILED_INTERRUPTED_COMBAT] = true,
+	[_G.SPELL_FAILED_NOT_READY] = true,
+	[_G.SPELL_FAILED_TARGETS_DEAD] = true,
+	[_G.ERR_GENERIC_NO_TARGET] = true,
 }
 
 function mod:SPELL_CAST_FAILED(event, _, sourceName, _, _, _, _, _, spellName, _, reason)

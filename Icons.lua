@@ -4,6 +4,18 @@ Copyright 2011 Adirelle (adirelle@tagada-team.net)
 All rights reserved.
 --]]
 
+-- Copy globals in local scope to easily spot global leaks with "luac -l | grep GLOBAL"
+local _G = _G
+local LibStub, UnitName, IsInInstance = _G.LibStub, _G.UnitName, _G.IsInInstance
+local CreateFrame, UIParent, setmetatable = _G.CreateFrame, _G.UIParent, _G.setmetatable
+local wipe, tinsert, strsplit, strmatch = _G.wipe, _G.tinsert, _G.strsplit, _G.strmatch
+local ipairs, min, max, pairs, next = _G.ipairs, _G.min, _G.max, _G.pairs, _G.next
+local ceil = _G.ceil
+local GetNumRaidMembers, GetNumPartyMembers = _G.GetNumRaidMembers, _G.GetNumPartyMembers
+local UnitInParty, UnitInRaid, GetTime = _G.UnitInParty, _G.UnitInRaid, _G.GetTime
+local UnitGroupRolesAssigned, GetRaidRosterInfo = _G.UnitGroupRolesAssigned, _G.GetRaidRosterInfo
+local GetSpellInfo, SetRaidTargetIconTexture = _G.GetSpellInfo, _G.SetRaidTargetIconTexture
+
 local addonName, addon = ...
 local L = addon.L
 local LSM = LibStub('LibSharedMedia-3.0')
@@ -101,7 +113,7 @@ end
 
 function mod:FullRefresh()
 	self:Wipe()
-	for guid, spellId, spell in addon:IterateSpells() do
+	for guid, spellID, spell in addon:IterateSpells() do
 		self:UpdateSpell(guid, spellID, spell)
 	end
 	self:Layout()
@@ -158,6 +170,7 @@ local function SortIcons(a, b)
 end
 
 local iconOrder = {}
+local tsort = _G.table.sort
 function mod:Layout()
 	if not next(activeIcons) then return end
 	local dx, dy = 0, 0
@@ -171,7 +184,7 @@ function mod:Layout()
 	for icon in self:IterateIcons() do
 		tinsert(iconOrder, icon)
 	end
-	table.sort(iconOrder, SortIcons)
+	tsort(iconOrder, SortIcons)
 	local x, y = 0, 0
 	local iconSpacing = prefs.iconSpacing
 	local numIcons = prefs.numIcons
@@ -375,7 +388,7 @@ function iconProto:UpdateWidgets()
 	end
 end
 
-local cos, PI2 = math.cos, math.pi * 2
+local cos, PI2 = _G.math.cos, _G.math.pi * 2
 function iconProto:OnUpdate(now, elapsed)
 	local targetAlpha, targetDelay = prefs.alpha, 1
 	local alpha = self:GetAlpha()
@@ -556,7 +569,7 @@ function mod:GetOptions()
 				desc = L['Font to use for the caster and countdown texts'],
 				type = 'select',
 				dialogControl = 'LSM30_Font',
-				values = AceGUIWidgetLSMlists.font,
+				values = _G.AceGUIWidgetLSMlists.font,
 				order = 50,
 			},
 			fontSize = {

@@ -4,6 +4,10 @@ Copyright 2011 Adirelle (adirelle@tagada-team.net)
 All rights reserved.
 --]]
 
+-- Copy globals in local scope to easily spot global leaks with "luac -l | grep GLOBAL"
+local _G = _G
+local LibStub, format, GetAddOnMetadata = _G.LibStub, _G.format, _G.GetAddOnMetadata
+
 local addonName, addon = ...
 local L = addon.L
 

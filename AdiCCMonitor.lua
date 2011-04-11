@@ -7,6 +7,28 @@ All rights reserved.
 local addonName, addon = ...
 local L = addon.L
 
+--------------------------------------------------------------------------------
+-- Copy globals in local scope to easily spot global leaks with "luac -l | grep GLOBAL"
+--------------------------------------------------------------------------------
+local _G = _G
+local LibStub, GetTime = _G.LibStub, _G.GetTime
+local CreateFrame, GetBuildInfo, IsInInstance = _G.CreateFrame, _G.GetBuildInfo, _G.IsInInstance
+local InterfaceOptionsFrame_OpenToCategory = _G.InterfaceOptionsFrame_OpenToCategory
+local UnitIsUnit, UnitGUID, UnitCanAttack = _G.UnitIsUnit, _G.UnitGUID, _G.UnitCanAttack
+local UnitName, UnitDebuff, GetRaidTargetIndex = _G.UnitName, _G.UnitDebuff, _G.GetRaidTargetIndex
+local GetNumRaidMembers, GetNumPartyMembers = _G.GetNumRaidMembers,  _G.GetNumPartyMembers
+local COMBATLOG_OBJECT_AFFILIATION_MINE = _G.COMBATLOG_OBJECT_AFFILIATION_MINE
+local COMBATLOG_OBJECT_REACTION_FRIENDLY = _G.COMBATLOG_OBJECT_REACTION_FRIENDLY
+local COMBATLOG_OBJECT_AFFILIATION_OUTSIDER = _G.COMBATLOG_OBJECT_AFFILIATION_OUTSIDER
+local GetSpellInfo, IsSpellKnown = _G.GetSpellInfo, _G.IsSpellKnown
+local setmetatable, bor, band = _G.setmetatable, _G.bit.bor, _G.bit.band
+local pairs, next, type, wipe, ceil = _G.pairs, _G.next, _G.type, _G.wipe, _G.ceil
+local select, strsplit, gsub, random = _G.select, _G.strsplit, _G.gsub, _G.random
+
+--------------------------------------------------------------------------------
+-- Create the addon
+--------------------------------------------------------------------------------
+
 LibStub('AceAddon-3.0'):NewAddon(addon, addonName, 'AceEvent-3.0', 'AceConsole-3.0')
 --@debug@
 _G[addonName] = addon
@@ -17,6 +39,7 @@ _G[addonName] = addon
 --------------------------------------------------------------------------------
 
 --@alpha@
+local AdiDebug = _G.AdiDebug
 if AdiDebug then
 	AdiDebug:Embed(addon, addonName)
 else
@@ -552,8 +575,6 @@ function addon:PLAYER_FOCUS_CHANGED()
 		return self:RefreshFromUnit('focus')
 	end
 end
-
-local bor, band = bit.bor, bit.band
 
 local SYMBOL_MASK = 0
 local SYMBOLS = {}
