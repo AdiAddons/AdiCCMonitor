@@ -38,6 +38,8 @@ local DEFAULT_SETTINGS = {
 	}
 }
 
+local COMM_PREFIX = "ACCMAlerts"
+
 function mod:OnInitialize()
 	self.db = addon.db:RegisterNamespace(self.moduleName, DEFAULT_SETTINGS)
 end
@@ -51,6 +53,9 @@ function mod:OnEnable()
 	self.announcer = nil
 	self:RegisterEvent('PARTY_MEMBERS_CHANGED')
 	self:RegisterEvent('CHAT_MSG_ADDON')
+	if not IsAddonMessagePrefixRegistered(COMM_PREFIX) then
+		RegisterAddonMessagePrefix(COMM_PREFIX)
+	end
 	self:PARTY_MEMBERS_CHANGED('OnEnable')
 
 	self:RegisterMessage('AdiCCMonitor_TestFlagChanged', 'UpdateListeners')
@@ -148,10 +153,10 @@ local playerName = UnitName("player")
 function mod:SendMessage(message)
 	local channel = (select(2, IsInInstance()) == "pvp") and "BATTLEGROUND" or "RAID"
 	if self.partySize == 0 then
-		self:CHAT_MSG_ADDON("SendMessage", self.name, message, channel, playerName)
+		self:CHAT_MSG_ADDON("SendMessage", COMM_PREFIX, message, channel, playerName)
 	else
 		self:Debug('Sending to', channel, ':', message)
-		SendAddonMessage(self.name, message, channel)
+		SendAddonMessage(COMM_PREFIX, message, channel)
 	end
 end
 
@@ -175,7 +180,7 @@ function mod:SendReply()
 end
 
 function mod:CHAT_MSG_ADDON(event, prefix, message, channel, sender)
-	if prefix == self.name and sender then
+	if prefix == COMM_PREFIX and sender then
 		self:Debug("Message from", sender, ":", message)
 		sender = strsplit('-', sender)
 		if message == "QUERY" then
