@@ -454,14 +454,20 @@ function iconProto:OnUpdate(now, elapsed)
 	if self.fadingOut then
 		if alpha == 0 or now > self.fadingEnd then
 			self:Release()
-			mod:Layout()
+			pendingLayout = true
 			return
 		else
 			targetAlpha, targetDelay = 0, self.fadingDelay
 		end
 	else
 		if prefs.blinking and now > self.expires - prefs.blinkingThreshold then
-			targetAlpha, targetDelay = prefs.alpha * (0.55 + 0.45 * cos(now * PI2)), 0.5
+			local f = now % 1
+			if f > 0.5 then
+				targetAlpha = 1.8 - 1.6 * f 
+			else
+				targetAlpha = 0.2 + 1.6 * f
+			end
+			targetDelay = 0.01
 		end
 		if self.Countdown:IsShown() then
 			self:UpdateCountdown(now)
