@@ -212,8 +212,8 @@ function mod:Layout()
 		tinsert(iconOrder, icon)
 	end
 	tsort(iconOrder, SortIcons)
-	local x, y, count = 0, 0
-	local bigX, bigY, bigCount = 0, 0
+	local x, y, count = 0, 0, 0
+	local bigX, bigY, bigCount = 0, 0, 0
 	local iconSpacing = prefs.iconSpacing
 	local numIcons = prefs.numIcons
 	for i, icon in ipairs(iconOrder) do
@@ -223,11 +223,13 @@ function mod:Layout()
 			icon:ClearAllPoints()
 			icon:SetSize(size, size)
 			if warning then
+				icon:SetParent(anchorBig)
 				icon:SetPoint(point, anchorBig, point, bigX, bigY)
 				bigX = bigX + dx * (size + iconSpacing)
 				bigY = bigY + dy * (size + iconSpacing)
 				bigCount = bigCount + 1
 			else
+				icon:SetParent(anchor)
 				icon:SetPoint(point, anchor, point, x, y)
 				x = x + dx * (size + iconSpacing)
 				y = y + dy * (size + iconSpacing)
