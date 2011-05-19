@@ -6,7 +6,7 @@
 ## Version: @project-version@
 ## SavedVariables: AdiCCMonitorDB
 ## X-Date: @project-date-iso@
-## OptionalDeps: LibStub, CallbackHandler-1.0, Ace3, LibMovable-1.0, LibDualSpec-1.0, LibSink-2.0, LibSharedMedia-3.0, AdiDebug
+## OptionalDeps: LibStub, CallbackHandler-1.0, Ace3, LibMovable-1.0, LibDualSpec-1.0, LibSink-2.0, LibSharedMedia-3.0, ButtonFacade, AdiDebug
 
 #@no-lib-strip@
 libs\LibStub\LibStub.lua

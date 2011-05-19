@@ -67,7 +67,8 @@ local iconHeap = {}
 local activeIcons = {}
 
 function mod:OnInitialize()
-	self.db = addon.db:RegisterNamespace(self.moduleName, DEFAULT_SETTINGS)
+	self.db = addon.db:RegisterNamespace(self.moduleName, DEFAULT_SETTINGS)	
+	mod:OnInitializeButtonFacade()
 end
 
 function mod:OnEnable()
@@ -129,6 +130,8 @@ function mod:ApplySettings(fullRefresh)
 	for icon in self:IterateIcons() do
 		icon:UpdateWidgets()
 	end
+	
+	self:ApplyButtonFacadeSettings()
 
 	if fullRefresh then
 		self:FullRefresh()
@@ -358,6 +361,7 @@ function mod:CreateIcon()
 	local overlay = CreateFrame("Frame", nil, icon)
 	overlay:SetAllPoints(icon)
 	overlay:SetFrameLevel(cooldown:GetFrameLevel()+1)
+	icon.__Overlay = overlay
 
 	local symbol = overlay:CreateTexture(nil, "OVERLAY")
 	symbol:SetPoint("CENTER")
@@ -373,6 +377,9 @@ function mod:CreateIcon()
 	local caster = overlay:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
 	caster:Hide()
 	icon.Caster = caster
+	
+	icon:SetSize(prefs.iconSize, prefs.iconSize)
+	mod:ButtonFacadeSkin(icon)
 
 	return icon
 end
@@ -740,3 +747,51 @@ function mod:GetOptions()
 	}
 end
 
+--------------------------------------------------------------------------------
+-- ButtonFacade support
+--------------------------------------------------------------------------------
+
+local LBF = LibStub('LibButtonFacade', true)
+if not LBF then
+	-- No ButtonFacade, create bgous methods and leave
+	function mod:OnInitializeButtonFacade() end
+	function mod:ButtonFacadeSkin() end
+	function mod:ApplyButtonFacadeSettings() end
+else
+	-- LBF support
+
+	local group
+
+	function mod:OnInitializeButtonFacade()
+		local db = addon.db:RegisterNamespace(self.name.."_ButtonFacade", { profile = { skinID = "Zoomed" } })	
+		group = LBF:Group(addonName)
+		LBF:RegisterSkinCallback(addonName, function(_, skinID, gloss, backdrop, _, _, colors)
+			local skin = db.profile
+			skin.skinID, skin.gloss, skin.backdrop, skin.colors = skinID, gloss, backdrop, colors
+		end, addon)
+		function self:ApplyButtonFacadeSettings()
+			local skin = db.profile
+			group:Skin(skin.skinID, skin.gloss, skin.backdrop, skin.colors)
+		end
+	end
+
+	function mod:ButtonFacadeSkin(icon)
+		-- Extract existing data
+		local data = { Icon = icon.Texture }
+		
+		-- Hide the default backdrop
+		icon:SetBackdrop(nil)
+
+		-- Create a bunch of texture to skin
+		data.Backdrop = icon:CreateTexture(nil, "BACKGROUND")
+		data.Backdrop:SetAllPoints(icon)
+		data.Normal = icon.__Overlay:CreateTexture(nil, "ARTWORK")
+		data.Normal:SetAllPoints(icon)
+		icon.GetNormalTexture = function() return data.Normal:GetTexture() end
+		icon.SetNormalTexture = function(_, ...) return data.Normal:SetTexture(...) end
+
+		-- Register the icon
+		group:AddButton(icon, data)
+	end
+		
+end
