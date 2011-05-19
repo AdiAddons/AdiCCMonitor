@@ -35,6 +35,13 @@ local DEFAULT_SETTINGS = {
 			xOffset = 20,
 			yOffset = -200,
 		},
+		anchorBig = {
+			scale = 2.0,
+			pointFrom = "TOP",
+			pointTo = "CENTER",
+			xOffset = 00,
+			yOffset = 50,
+		},
 		alpha = 1,
 		showSymbol = true,
 		showCountdown = true,
@@ -46,11 +53,13 @@ local DEFAULT_SETTINGS = {
 		casterSide = "INSIDE_TOP",
 		fontName = 'Arial Narrow',
 		fontSize = 14,
+		bigIcons = true,
+		bigThreshold = 5,
 	}
 }
 
 local prefs
-local anchor
+local anchor, anchorBig
 
 local iconProto = { Debug = addon.Debug }
 local iconMeta = { __index = iconProto }
@@ -64,9 +73,12 @@ end
 function mod:OnEnable()
 	prefs = self.db.profile
 	if not anchor then
-		anchor = self:CreateAnchor()
+		anchor, anchorBig = self:CreateAnchors()
 	end
 	anchor:Show()
+	if prefs.bigIcons then
+		anchorBig:Show()
+	end
 	self:RegisterMessage('AdiCCMonitor_SpellAdded')
 	self:RegisterMessage('AdiCCMonitor_SpellUpdated')
 	self:RegisterMessage('AdiCCMonitor_SpellRemoved')
@@ -79,6 +91,7 @@ end
 function mod:OnDisable()
 	self:Wipe()
 	anchor:Hide()
+	anchorBig:Hide()
 end
 
 function mod:OnConfigChanged()
@@ -87,17 +100,31 @@ end
 
 function mod:ApplySettings(fullRefresh)
 
+	local width, height
 	if prefs.vertical then
-		anchor:SetSize(prefs.iconSize, (prefs.iconSpacing + prefs.iconSize) * prefs.numIcons - prefs.iconSpacing)
+		width, height = prefs.iconSize, (prefs.iconSpacing + prefs.iconSize) * prefs.numIcons - prefs.iconSpacing
 	else
-		anchor:SetSize((prefs.iconSpacing + prefs.iconSize) * prefs.numIcons - prefs.iconSpacing, prefs.iconSize)
+		width, height = (prefs.iconSpacing + prefs.iconSize) * prefs.numIcons - prefs.iconSpacing, prefs.iconSize
 	end
-
+	
+	local a = prefs.anchor
+	anchor:SetSize(width, height)
 	anchor:SetAlpha(prefs.alpha)
 	anchor:ClearAllPoints()
-	local a = prefs.anchor
 	anchor:SetScale(a.scale)
 	anchor:SetPoint(a.pointFrom, UIParent, a.pointTo, a.xOffset, a.yOffset)
+
+	if prefs.bigIcons then
+		local a = prefs.anchorBig
+		anchorBig:SetSize((prefs.iconSpacing + prefs.iconSize) * prefs.numIcons - prefs.iconSpacing, prefs.iconSize)
+		anchorBig:SetAlpha(prefs.alpha)	
+		anchorBig:ClearAllPoints()
+		anchorBig:SetScale(a.scale)
+		anchorBig:SetPoint(a.pointFrom, UIParent, a.pointTo, a.xOffset, a.yOffset)
+		anchorBig:Show()
+	else
+		anchorBig:Hide()
+	end
 
 	for icon in self:IterateIcons() do
 		icon:UpdateWidgets()
@@ -185,18 +212,28 @@ function mod:Layout()
 		tinsert(iconOrder, icon)
 	end
 	tsort(iconOrder, SortIcons)
-	local x, y = 0, 0
+	local x, y, count = 0, 0
+	local bigX, bigY, bigCount = 0, 0
 	local iconSpacing = prefs.iconSpacing
 	local numIcons = prefs.numIcons
 	for i, icon in ipairs(iconOrder) do
-		if i <= numIcons then
+		local warning = icon.warning and bigCount <= numIcons
+		if warning or count <= numIcons then
 			local size = prefs.iconSize * (icon.isMine and 1 or 0.8)
 			icon:ClearAllPoints()
 			icon:SetSize(size, size)
-			icon:SetPoint(point, anchor, point, x, y)
+			if warning then
+				icon:SetPoint(point, anchorBig, point, bigX, bigY)
+				bigX = bigX + dx * (size + iconSpacing)
+				bigY = bigY + dy * (size + iconSpacing)
+				bigCount = bigCount + 1
+			else
+				icon:SetPoint(point, anchor, point, x, y)
+				x = x + dx * (size + iconSpacing)
+				y = y + dy * (size + iconSpacing)
+				count = count + 1
+			end
 			icon:Show()
-			x = x + dx * (size + iconSpacing)
-			y = y + dy * (size + iconSpacing)
 		else
 			icon:Hide()
 		end
@@ -237,6 +274,7 @@ end
 
 local delay = 0
 local UPDATE_PERIOD = 0.05
+local pendingLayout = false
 
 local function OnUpdate(self, elapsed)
 	delay = delay + elapsed
@@ -248,18 +286,35 @@ local function OnUpdate(self, elapsed)
 		end
 	end
 	delay = 0
+	if pendingLayout then
+		pendingLayout = false
+		mod:Layout()
+	end
 end
 
-function mod:CreateAnchor()
+function mod:CreateAnchors()
 	local anchor = CreateFrame("Frame", nil, UIParent)
-	setmetatable(iconProto, {__index = anchor})
 	anchor:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 20, -200)
 	anchor:SetClampedToScreen(true)
 	anchor:SetFrameStrata("HIGH")
-	anchor:SetScript('OnUpdate', OnUpdate)
 	anchor.LM10_OnDatabaseUpdated = function() self:Layout() end
 	self:RegisterMovable(anchor, function() return prefs.anchor end, L['AdiCCMonitor icons'])
-	return anchor
+
+	local anchorBig = CreateFrame("Frame", nil, UIParent)
+	anchorBig:SetScale(2.0)
+	anchorBig:SetPoint("TOP", UIParent, "CENTER", 0, 50)
+	anchorBig:SetClampedToScreen(true)
+	anchorBig:SetFrameStrata("HIGH")
+	anchorBig.LM10_Enable = function() prefs.bigIcons = true self:OnConfigChanged() end
+	anchorBig.LM10_Disable = function() prefs.bigIcons = false self:OnConfigChanged() end
+	anchorBig.LM10_IsEnabled = function() return prefs.bigIcons end
+	anchorBig.LM10_OnDatabaseUpdated = function() self:Layout() end
+	self:RegisterMovable(anchorBig, function() return prefs.anchorBig end, L['AdiCCMonitor warning icons'])
+
+	anchor:SetScript('OnUpdate', OnUpdate)
+	setmetatable(iconProto, {__index = anchor})
+
+	return anchor, anchorBig
 end
 
 --------------------------------------------------------------------------------
@@ -332,8 +387,7 @@ function mod:AcquireIcon()
 end
 
 function iconProto:Release()
-	self.guid, self.spellID, self.symbol, self.duration, self.expires = nil
-	self.fadingOut = nil
+	self.guid, self.spellID, self.symbol, self.duration, self.expires, self.fadingOut, self.warning = nil
 	self:SetAlpha(prefs.alpha)
 	self.Texture:SetVertexColor(1, 1, 1, 1)
 	self:Hide()
@@ -409,6 +463,11 @@ function iconProto:OnUpdate(now, elapsed)
 		end
 		if self.Countdown:IsShown() then
 			self:UpdateCountdown(now)
+		end
+		local warning = prefs.bigIcons and now > self.expires - prefs.bigThreshold
+		if warning ~= self.warning then
+			self.warning = warning
+			pendingLayout = true
 		end
 	end
 	if alpha ~= targetAlpha then
@@ -634,6 +693,22 @@ function mod:GetOptions()
 				step = 0.5,
 				order = 140,
 			},
+			bigIcons = {
+				name = L['Enable warning area'],
+				desc = L['A second display area, that shows spells about to end.'],
+				type = 'toggle',
+				width = 'double',
+				order = 150,
+			},
+			bigThreshold = {
+				name = L['Warning threshold'],
+				desc = L['The remaining time threshold, below which the icon is displayed in the warning area.'],
+				type = 'range',
+				order = 160,
+				min = 1,
+				max = 15,
+				step = 0.5,
+			},
 			lockAnchor = {
 				name = function() return self:AreMovablesLocked() and L['Unlock anchor'] or L['Lock anchor'] end,
 				type = 'execute',
@@ -644,14 +719,14 @@ function mod:GetOptions()
 						self:LockMovables()
 					end
 				end,
-				order = 150,
+				order = -20,
 			},
 			resetPosition = {
 				name = L['Reset position'],
 				desc = L['Move the anchor back to its default position.'],
 				type = 'execute',
 				func = function() self:ResetMovableLayout() end,
-				order = 160,
+				order = -10,
 			},
 		},
 	}
