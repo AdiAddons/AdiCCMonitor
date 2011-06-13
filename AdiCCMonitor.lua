@@ -702,6 +702,14 @@ function combatLogCallbacks:OnEvent(_, _, event, hideCaster, sourceGUID, sourceN
 	end
 end
 
+-- 4.2 compat layer
+if select(4, GetBuildInfo()) == 40200 then
+	local BaseOnEvent = combatLogCallbacks.OnEvent
+	function combatLogCallbacks.OnEvent(self, _, _, event, hideCaster, sourceGUID, sourceName, sourceFlags, _, destGUID, destName, destFlags, _, spellID, ...)
+		return BaseOnEvent(self, _, _, event, hideCaster, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, ...)
+	end
+end
+
 --------------------------------------------------------------------------------
 -- Test
 --------------------------------------------------------------------------------
