@@ -680,7 +680,7 @@ local FILTERED_SPELL_EVENTS = {
 	SPELL_MISSED = true,
 }
 
-function combatLogCallbacks:OnEvent(_, _, event, hideCaster, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, ...)
+function combatLogCallbacks:OnEvent(_, _, event, hideCaster, sourceGUID, sourceName, sourceFlags, _, destGUID, destName, destFlags, _, spellID, ...)
 	if destGUID and band(destFlags, COMBATLOG_OBJECT_REACTION_FRIENDLY) == 0 and usedLogEvents[event] then
 		if FILTERED_SPELL_EVENTS[event] then
 			if not spellID or not SPELLS[spellID] then
@@ -699,14 +699,6 @@ function combatLogCallbacks:OnEvent(_, _, event, hideCaster, sourceGUID, sourceN
 		end
 		--@end-debug@
 		return self:Fire(event, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, ...)
-	end
-end
-
--- 4.2 compat layer
-if select(4, GetBuildInfo()) == 40200 then
-	local BaseOnEvent = combatLogCallbacks.OnEvent
-	function combatLogCallbacks.OnEvent(self, _, _, event, hideCaster, sourceGUID, sourceName, sourceFlags, _, destGUID, destName, destFlags, _, spellID, ...)
-		return BaseOnEvent(self, _, _, event, hideCaster, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, ...)
 	end
 end
 
