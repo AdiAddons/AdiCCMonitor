@@ -18,7 +18,7 @@ local ICON_LIST = _G.ICON_LIST
 local addonName, addon = ...
 local L = addon.L
 
-local mod = addon:NewModule('Alerts', 'AceEvent-3.0', 'AceTimer-3.0', 'LibSink-2.0')
+local mod = addon:NewModule('Alerts', 'AceEvent-3.0', 'LibSink-2.0')
 
 local prefs
 
@@ -114,7 +114,7 @@ function mod:UpdateListeners()
 	end
 end
 
--- Slightly facade to AceTimer that allows easy rescheduling
+-- Light facade to AceTimer that allows easy rescheduling
 do
 	local AceTimer = LibStub('AceTimer-3.0')
 	local timers = {}
@@ -127,7 +127,7 @@ do
 	
 	function mod:ScheduleTimer(name, delay)
 		if timers[name] then
-			AceTimer.CancelTimer(self, timers[name])
+			AceTimer.CancelTimer(self, timers[name], true)
 		end
 		self:Debug('Scheduling', name, 'in', delay, 'secs')
 		timers[name] = AceTimer.ScheduleTimer(self, ExecTimer, delay, name)
@@ -136,7 +136,7 @@ do
 	function mod:CancelTimer(name)
 		if timers[name] then
 			self:Debug('Canceling', name)
-			AceTimer.CancelTimer(mod, timers[name], true)
+			AceTimer.CancelTimer(self, timers[name], true)
 			timers[name] = nil
 		end
 	end
