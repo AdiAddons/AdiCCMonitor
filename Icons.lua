@@ -352,7 +352,6 @@ function mod:CreateIcon()
 
 	local cooldown = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
 	cooldown:SetAllPoints(texture)
-	cooldown:SetDrawEdge(true)
 	cooldown:SetReverse(true)
 	cooldown:Hide()
 	cooldown.noCooldownCount = true
