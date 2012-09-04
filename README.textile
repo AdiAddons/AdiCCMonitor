@@ -1,5 +1,7 @@
 AdiCCMonitor helps you keeping track of group crowd-control spells.
 
+*Note :* the spells are likely not up-to-date with MoP.
+
 h2. Features 
 
 It detects your own crowd-control spells and those of your party/raids and can provide feedbacks in two ways :

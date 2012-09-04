@@ -1,6 +1,6 @@
 --[[
 AdiCCMonitor - Crowd-control monitor.
-Copyright 2011 Adirelle (adirelle@tagada-team.net)
+Copyright 2011-2012 Adirelle (adirelle@gmail.com)
 All rights reserved.
 --]]
 

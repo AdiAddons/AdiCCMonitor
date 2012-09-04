@@ -1,6 +1,6 @@
 --[[
 AdiCCMonitor - Crowd-control monitor.
-Copyright 2011 Adirelle (adirelle@tagada-team.net)
+Copyright 2011-2012 Adirelle (adirelle@gmail.com)
 All rights reserved.
 --]]
 
@@ -89,7 +89,7 @@ local SPELLS = {
 	[  710] = 30, -- Banish
 	[76780] = 50, -- Bind Elemental
 	--[33786] =  6, -- Cyclone
-  [  339] = 30, -- Entangling Roots
+	[  339] = 30, -- Entangling Roots
 	[ 5782] = 20, -- Fear
 	[ 3355] = 60, -- Freezing Trap
 	[51514] = 60, -- Hex
