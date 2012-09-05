@@ -514,9 +514,11 @@ function addon:FullRefresh()
 	self:RefreshFromUnit('target')
 	self:RefreshFromUnit('focus')
 	self:RefreshFromUnit('mouseover')
-	local prefix, num = "raidtarget", GetNumRaidMembers()
-	if num == 0 then
-		prefix, num = "partytarget", GetNumPartyMembers()
+	local prefix, num
+	if IsInRaid() then
+		prefix, num = "raidtarget", GetNumGroupMembers()
+	else
+		prefix, num = "partytarget", GetNumSubgroupMembers()
 	end
 	for i = 1, num do
 		self:RefreshFromUnit(prefix..num)

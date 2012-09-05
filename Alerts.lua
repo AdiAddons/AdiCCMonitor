@@ -197,10 +197,7 @@ function mod:CHAT_MSG_ADDON(event, prefix, message, channel, sender)
 end
 
 function mod:PARTY_MEMBERS_CHANGED()
-	local partySize = GetNumRaidMembers()
-	if partySize == 0 then
-		partySize = GetNumPartyMembers()
-	end
+	local partySize = GetNumGroupMembers()
 	if partySize ~= self.partySize then
 		if self.partySize == 0 or (self.announcer and not UnitInParty(self.announcer) and not UnitInRaid(self.announcer)) then
 			self:ScheduleTimer("SendQuery", 2)
