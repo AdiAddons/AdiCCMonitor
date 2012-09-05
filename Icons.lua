@@ -6,15 +6,22 @@ All rights reserved.
 
 -- Copy globals in local scope to easily spot global leaks with "luac -l | grep GLOBAL"
 local _G = _G
-local LibStub, UnitName, IsInInstance = _G.LibStub, _G.UnitName, _G.IsInInstance
-local CreateFrame, UIParent, setmetatable = _G.CreateFrame, _G.UIParent, _G.setmetatable
-local wipe, tinsert, strsplit, strmatch = _G.wipe, _G.tinsert, _G.strsplit, _G.strmatch
-local ipairs, min, max, pairs, next = _G.ipairs, _G.min, _G.max, _G.pairs, _G.next
 local ceil = _G.ceil
-local GetNumRaidMembers, GetNumPartyMembers = _G.GetNumRaidMembers, _G.GetNumPartyMembers
-local UnitInParty, UnitInRaid, GetTime = _G.UnitInParty, _G.UnitInRaid, _G.GetTime
-local UnitGroupRolesAssigned, GetRaidRosterInfo = _G.UnitGroupRolesAssigned, _G.GetRaidRosterInfo
-local GetSpellInfo, SetRaidTargetIconTexture = _G.GetSpellInfo, _G.SetRaidTargetIconTexture
+local CreateFrame = _G.CreateFrame
+local GetSpellInfo = _G.GetSpellInfo
+local GetTime = _G.GetTime
+local ipairs = _G.ipairs
+local max = _G.max
+local min = _G.min
+local next = _G.next
+local pairs = _G.pairs
+local setmetatable = _G.setmetatable
+local SetRaidTargetIconTexture = _G.SetRaidTargetIconTexture
+local strmatch = _G.strmatch
+local strsplit = _G.strsplit
+local tinsert = _G.tinsert
+local UIParent = _G.UIParent
+local wipe = _G.wipe
 
 local addonName, addon = ...
 local L = addon.L

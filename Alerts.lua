@@ -6,14 +6,25 @@ All rights reserved.
 
 -- Copy globals in local scope to easily spot global leaks with "luac -l | grep GLOBAL"
 local _G = _G
-local LibStub, UnitName, IsInInstance = _G.LibStub, _G.UnitName, _G.IsInInstance
-local wipe, select, strsplit, format = _G.wipe, _G.select, _G.strsplit, _G.format
-local floor, print, pairs = _G.floor, _G.print, _G.pairs
-local GetNumRaidMembers, GetNumPartyMembers = _G.GetNumRaidMembers, _G.GetNumPartyMembers
-local UnitInParty, UnitInRaid, GetTime = _G.UnitInParty, _G.UnitInRaid, _G.GetTime
-local UnitGroupRolesAssigned, GetRaidRosterInfo = _G.UnitGroupRolesAssigned, _G.GetRaidRosterInfo
-local SendAddonMessage = _G.SendAddonMessage
+local floor = _G.floor
+local format = _G.format
+local GetNumGroupMembers = _G.GetNumGroupMembers
+local GetRaidRosterInfo = _G.GetRaidRosterInfo
+local GetTime = _G.GetTime
 local ICON_LIST = _G.ICON_LIST
+local IsAddonMessagePrefixRegistered = _G.IsAddonMessagePrefixRegistered
+local IsInInstance = _G.IsInInstance
+local pairs = _G.pairs
+local print = _G.print
+local RegisterAddonMessagePrefix = _G.RegisterAddonMessagePrefix
+local select = _G.select
+local SendAddonMessage = _G.SendAddonMessage
+local strsplit = _G.strsplit
+local UnitGroupRolesAssigned = _G.UnitGroupRolesAssigned
+local UnitInParty = _G.UnitInParty
+local UnitInRaid = _G.UnitInRaid
+local UnitName = _G.UnitName
+local wipe = _G.wipe
 
 local addonName, addon = ...
 local L = addon.L

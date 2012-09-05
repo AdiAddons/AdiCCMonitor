@@ -11,19 +11,36 @@ local L = addon.L
 -- Copy globals in local scope to easily spot global leaks with "luac -l | grep GLOBAL"
 --------------------------------------------------------------------------------
 local _G = _G
-local LibStub, GetTime = _G.LibStub, _G.GetTime
-local CreateFrame, GetBuildInfo, IsInInstance = _G.CreateFrame, _G.GetBuildInfo, _G.IsInInstance
-local InterfaceOptionsFrame_OpenToCategory = _G.InterfaceOptionsFrame_OpenToCategory
-local UnitIsUnit, UnitGUID, UnitCanAttack = _G.UnitIsUnit, _G.UnitGUID, _G.UnitCanAttack
-local UnitName, UnitDebuff, GetRaidTargetIndex = _G.UnitName, _G.UnitDebuff, _G.GetRaidTargetIndex
-local GetNumRaidMembers, GetNumPartyMembers = _G.GetNumRaidMembers,  _G.GetNumPartyMembers
+local band = _G.bit.band
+local bor = _G.bit.bor
+local ceil = _G.ceil
 local COMBATLOG_OBJECT_AFFILIATION_MINE = _G.COMBATLOG_OBJECT_AFFILIATION_MINE
-local COMBATLOG_OBJECT_REACTION_FRIENDLY = _G.COMBATLOG_OBJECT_REACTION_FRIENDLY
 local COMBATLOG_OBJECT_AFFILIATION_OUTSIDER = _G.COMBATLOG_OBJECT_AFFILIATION_OUTSIDER
-local GetSpellInfo, IsSpellKnown = _G.GetSpellInfo, _G.IsSpellKnown
-local setmetatable, bor, band = _G.setmetatable, _G.bit.bor, _G.bit.band
-local pairs, next, type, wipe, ceil = _G.pairs, _G.next, _G.type, _G.wipe, _G.ceil
-local select, strsplit, gsub, random = _G.select, _G.strsplit, _G.gsub, _G.random
+local COMBATLOG_OBJECT_REACTION_FRIENDLY = _G.COMBATLOG_OBJECT_REACTION_FRIENDLY
+local CreateFrame = _G.CreateFrame
+local GetNumGroupMembers = _G.GetNumGroupMembers
+local GetNumSubgroupMembers = _G.GetNumSubgroupMembers
+local GetRaidTargetIndex = _G.GetRaidTargetIndex
+local GetSpellInfo = _G.GetSpellInfo
+local GetTime = _G.GetTime
+local gsub = _G.gsub
+local InterfaceOptionsFrame_OpenToCategory = _G.InterfaceOptionsFrame_OpenToCategory
+local IsInInstance = _G.IsInInstance
+local IsInRaid = _G.IsInRaid
+local IsSpellKnown = _G.IsSpellKnown
+local next = _G.next
+local pairs = _G.pairs
+local random = _G.random
+local select = _G.select
+local setmetatable = _G.setmetatable
+local strsplit = _G.strsplit
+local type = _G.type
+local UnitCanAttack = _G.UnitCanAttack
+local UnitDebuff = _G.UnitDebuff
+local UnitGUID = _G.UnitGUID
+local UnitIsUnit = _G.UnitIsUnit
+local UnitName = _G.UnitName
+local wipe = _G.wipe
 
 --------------------------------------------------------------------------------
 -- Create the addon
@@ -760,4 +777,3 @@ do
 		end
 	end
 end
-
