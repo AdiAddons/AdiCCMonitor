@@ -103,32 +103,34 @@ local DEFAULT_SETTINGS = {
 
 -- Provides default durations
 local SPELLS = {
-	[  710] = 30, -- Banish
-	[76780] = 50, -- Bind Elemental
+	[   710] = 30, -- Banish
+	[ 76780] = 50, -- Bind Elemental
 	--[33786] =  6, -- Cyclone
-	[  339] = 30, -- Entangling Roots
-	[ 5782] = 20, -- Fear
-	[ 3355] = 60, -- Freezing Trap
-	[51514] = 60, -- Hex
-	[ 2637] = 40, -- Hibernate
-	[  118] = 50, -- Polymorph
-	[61305] = 50, -- Polymorph (Black Cat)
-	[28272] = 50, -- Polymorph (Pig)
-	[61721] = 50, -- Polymorph (Rabbit)
-	[61780] = 50, -- Polymorph (Turkey)
-	[28271] = 50, -- Polymorph (Turtle)
-	[20066] = 60, -- Repentance
-	[ 6770] = 60, -- Sap
-	[ 6358] = 30, -- Seduction
-	[ 9484] = 50, -- Shackle Undead
-	[10326] = 20, -- Turn Evil
-	[19386] = 30, -- Wyvern Sting
+	[   339] = 30, -- Entangling Roots
+	[  5782] = 20, -- Fear
+	[  3355] = 60, -- Freezing Trap
+	[ 51514] = 60, -- Hex
+	[  2637] = 40, -- Hibernate
+	[115078] = 30, -- Paralysis
+	[   118] = 50, -- Polymorph
+	[ 61305] = 50, -- Polymorph (Black Cat)
+	[ 28272] = 50, -- Polymorph (Pig)
+	[ 61721] = 50, -- Polymorph (Rabbit)
+	[ 61780] = 50, -- Polymorph (Turkey)
+	[ 28271] = 50, -- Polymorph (Turtle)
+	[ 20066] = 60, -- Repentance
+	[  6770] = 60, -- Sap
+	[  6358] = 30, -- Seduction
+	[  9484] = 50, -- Shackle Undead
+	[ 10326] = 20, -- Turn Evil
+	[ 19386] = 30, -- Wyvern Sting
 }
 
 -- Spells with variable duration
 local VARIABLE_DURATION_SPELLS = {
-	[ 3355] = true, -- Freezing Trap
-	[ 6770] = true, -- Sap
+	[  3355] = true, -- Freezing Trap
+	[115078] = true, -- Paralysis
+	[  6770] = true, -- Sap
 }
 
 -- Spells that do not break on first damage
