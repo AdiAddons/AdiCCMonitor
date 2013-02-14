@@ -111,6 +111,7 @@ local SPELLS = {
 	[  3355] = 60, -- Freezing Trap
 	[ 51514] = 60, -- Hex
 	[  2637] = 40, -- Hibernate
+	[122224] = 50, -- Impaling Spear (Heart of Fear, Wind Lord Mel'jarak encounter)
 	[115078] = 30, -- Paralysis
 	[   118] = 50, -- Polymorph
 	[ 61305] = 50, -- Polymorph (Black Cat)
