@@ -105,12 +105,15 @@ local DEFAULT_SETTINGS = {
 local SPELLS = {
 	[   710] = 30, -- Banish
 	[ 76780] = 50, -- Bind Elemental
+	[  2094] = 60, -- Blind
 	--[33786] =  6, -- Cyclone
 	[   339] = 30, -- Entangling Roots
 	[  5782] = 20, -- Fear
+	[118699] = 20, -- Fear
 	[  3355] = 60, -- Freezing Trap
 	[ 51514] = 60, -- Hex
 	[  2637] = 40, -- Hibernate
+	[115268] = 30, -- Mesmerize
 	[115078] = 30, -- Paralysis
 	[   118] = 50, -- Polymorph
 	[ 61305] = 50, -- Polymorph (Black Cat)
@@ -120,6 +123,7 @@ local SPELLS = {
 	[ 28271] = 50, -- Polymorph (Turtle)
 	[ 20066] = 60, -- Repentance
 	[  6770] = 60, -- Sap
+	[  1513] = 20, -- Scare Beast
 	[  6358] = 30, -- Seduction
 	[  9484] = 50, -- Shackle Undead
 	[ 10326] = 20, -- Turn Evil
@@ -135,10 +139,11 @@ local VARIABLE_DURATION_SPELLS = {
 
 -- Spells that do not break on first damage
 local RESILIENT_SPELLS = {
-	[  339] = true, -- Entangling Roots
-	[ 5782] = true, -- Fear
-	[51514] = true, -- Hex
-	[10326] = true, -- Turn Evil
+	[   339] = true, -- Entangling Roots
+	[  5782] = true, -- Fear
+	[118699] = true, -- Fear
+	[ 51514] = true, -- Hex
+	[ 10326] = true, -- Turn Evil
 }
 
 -- Spells that does not break on damage
