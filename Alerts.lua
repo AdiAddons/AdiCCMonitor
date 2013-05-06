@@ -397,6 +397,7 @@ function mod:GetOptions()
 		arena = L['Arenas'],
 		pvp = L['Battlegrounds'],
 		none = L['Open world'],
+		scenario = L['Scenarios']
 	}
 	local instanceList = {}
 	local function GetInstanceList()
