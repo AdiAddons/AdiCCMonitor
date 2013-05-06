@@ -162,7 +162,7 @@ end
 local playerName = UnitName("player")
 
 function mod:SendMessage(message)
-	local channel = (select(2, IsInInstance()) == "pvp") and "BATTLEGROUND" or "RAID"
+	local channel = (select(2, IsInInstance()) == "pvp" or IsInLFGDungeon()) and "INSTANCE_CHAT" or "RAID"
 	if self.partySize == 0 then
 		self:CHAT_MSG_ADDON("SendMessage", COMM_PREFIX, message, channel, playerName)
 	else
