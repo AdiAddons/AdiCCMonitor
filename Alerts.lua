@@ -62,12 +62,12 @@ function mod:OnEnable()
 
 	self.partySize = 0
 	self.announcer = nil
-	self:RegisterEvent('PARTY_MEMBERS_CHANGED')
+	self:RegisterEvent('GROUP_ROSTER_UPDATE')
 	self:RegisterEvent('CHAT_MSG_ADDON')
 	if not IsAddonMessagePrefixRegistered(COMM_PREFIX) then
 		RegisterAddonMessagePrefix(COMM_PREFIX)
 	end
-	self:PARTY_MEMBERS_CHANGED('OnEnable')
+	self:GROUP_ROSTER_UPDATE('OnEnable')
 
 	self:RegisterMessage('AdiCCMonitor_TestFlagChanged', 'UpdateListeners')
 	self:UpdateListeners()
@@ -207,7 +207,7 @@ function mod:CHAT_MSG_ADDON(event, prefix, message, channel, sender)
 	end
 end
 
-function mod:PARTY_MEMBERS_CHANGED()
+function mod:GROUP_ROSTER_UPDATE()
 	local partySize = GetNumGroupMembers()
 	if partySize ~= self.partySize then
 		if self.partySize == 0 or (self.announcer and not UnitInParty(self.announcer) and not UnitInRaid(self.announcer)) then
