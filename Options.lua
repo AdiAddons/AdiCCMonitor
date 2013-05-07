@@ -89,6 +89,7 @@ function addon.GetOptions()
 							arena = L['Arenas'],
 							pvp = L['Battlegrounds'],
 							none = L['Open world'],
+							scenario = L['Scenarios']
 						},
 						disabled = function() return self.testing end,
 					},

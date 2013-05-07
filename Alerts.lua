@@ -62,12 +62,12 @@ function mod:OnEnable()
 
 	self.partySize = 0
 	self.announcer = nil
-	self:RegisterEvent('PARTY_MEMBERS_CHANGED')
+	self:RegisterEvent('GROUP_ROSTER_UPDATE')
 	self:RegisterEvent('CHAT_MSG_ADDON')
 	if not IsAddonMessagePrefixRegistered(COMM_PREFIX) then
 		RegisterAddonMessagePrefix(COMM_PREFIX)
 	end
-	self:PARTY_MEMBERS_CHANGED('OnEnable')
+	self:GROUP_ROSTER_UPDATE('OnEnable')
 
 	self:RegisterMessage('AdiCCMonitor_TestFlagChanged', 'UpdateListeners')
 	self:UpdateListeners()
@@ -162,7 +162,7 @@ end
 local playerName = UnitName("player")
 
 function mod:SendMessage(message)
-	local channel = (select(2, IsInInstance()) == "pvp") and "BATTLEGROUND" or "RAID"
+	local channel = (select(2, IsInInstance()) == "pvp" or IsInLFGDungeon()) and "INSTANCE_CHAT" or "RAID"
 	if self.partySize == 0 then
 		self:CHAT_MSG_ADDON("SendMessage", COMM_PREFIX, message, channel, playerName)
 	else
@@ -207,7 +207,7 @@ function mod:CHAT_MSG_ADDON(event, prefix, message, channel, sender)
 	end
 end
 
-function mod:PARTY_MEMBERS_CHANGED()
+function mod:GROUP_ROSTER_UPDATE()
 	local partySize = GetNumGroupMembers()
 	if partySize ~= self.partySize then
 		if self.partySize == 0 or (self.announcer and not UnitInParty(self.announcer) and not UnitInRaid(self.announcer)) then
@@ -397,6 +397,7 @@ function mod:GetOptions()
 		arena = L['Arenas'],
 		pvp = L['Battlegrounds'],
 		none = L['Open world'],
+		scenario = L['Scenarios']
 	}
 	local instanceList = {}
 	local function GetInstanceList()
