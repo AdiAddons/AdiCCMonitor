@@ -103,50 +103,77 @@ local DEFAULT_SETTINGS = {
 
 -- Provides default durations
 local SPELLS = {
-	[   710] = 30, -- Banish
-	[ 76780] = 50, -- Bind Elemental
-	[  2094] = 60, -- Blind
-	--[33786] =  6, -- Cyclone
+	-- Druid
 	[   339] = 30, -- Entangling Roots
-	[  5782] = 20, -- Fear
-	[118699] = 20, -- Fear
-	[  3355] = 60, -- Freezing Trap
-	[ 51514] = 60, -- Hex
 	[  2637] = 40, -- Hibernate
-	[115268] = 30, -- Mesmerize
-	[115078] = 30, -- Paralysis
+	[ 19975] = 27, -- Nature's Grasp (Uses different spellIDs than Entangling Roots for the same spell)
+	[102359] = 20, -- Mass Entanglement (talent)
+	[113275] = 30, -- Entangling Roots (Symbiosis)
+
+	-- Hunter
+	[  1513] = 20, -- Scare Beast
+	[  3355] = 60, -- Freezing Trap
+	[ 19386] = 30, -- Wyvern Sting
+
+	-- Mage
 	[   118] = 50, -- Polymorph
-	[ 61305] = 50, -- Polymorph (Black Cat)
+	[ 28271] = 50, -- Polymorph (Turtle)
 	[ 28272] = 50, -- Polymorph (Pig)
+	[ 61305] = 50, -- Polymorph (Black cat)
 	[ 61721] = 50, -- Polymorph (Rabbit)
 	[ 61780] = 50, -- Polymorph (Turkey)
-	[ 28271] = 50, -- Polymorph (Turtle)
+	[113724] = 10, -- Ring of Frost
+
+	-- Paladin
+	[ 10326] = 40, -- Turn Evil
 	[ 20066] = 60, -- Repentance
-	[  6770] = 60, -- Sap
-	[  1513] = 20, -- Scare Beast
-	[  6358] = 30, -- Seduction
+	[145067] = 40, -- Turn Evil (Evil is a Point of View)
+
+	-- Priest
 	[  9484] = 50, -- Shackle Undead
-	[ 10326] = 20, -- Turn Evil
-	[ 19386] = 30, -- Wyvern Sting
+	[108920] = 20, -- Void Tendrils
+	[113792] = 30, -- Psychic Terror (Pet)
+
+	-- Rogue
+	[  2094] = 60, -- Blind
+	[  6770] = 60, -- Sap
+
+	-- Shaman
+	[ 51514] = 60, -- Hex
+
+	-- Warlock
+	[   710] = 30, -- Banish
+	[  5484] = 20, -- Howl of Terror
+	[  5782] = 20, -- Fear
+	[  6358] = 30, -- Seduction (Succubus)
+	[104045] = 20, -- Sleep (Demon form)
+	[115268] = 30, -- Mesmerize (Shivarra)
+
+	-- Monk
+	[115078] = 40, -- Paralysis
 }
 
 -- Spells with variable duration
 local VARIABLE_DURATION_SPELLS = {
 	[  3355] = true, -- Freezing Trap
-	[115078] = true, -- Paralysis
 	[  6770] = true, -- Sap
+	[115078] = true, -- Paralysis
 }
 
 -- Spells that do not break on first damage
 local RESILIENT_SPELLS = {
 	[   339] = true, -- Entangling Roots
 	[  5782] = true, -- Fear
-	[118699] = true, -- Fear
-	[ 51514] = true, -- Hex
 	[ 10326] = true, -- Turn Evil
+	[ 19975] = true, -- Nature's Grasp (Uses different spellIDs than Entangling Roots for the same spell)
+	[ 51514] = true, -- Hex
+	[102359] = true, -- Mass Entanglement (talent)
+	[113275] = true, -- Entangling Roots (Symbiosis)
+	[118699] = true, -- Fear
+	[145067] = true, -- Turn Evil (Evil is a Point of View)
 }
 
--- Spells that does not break on damage
+-- Spells that do not break on damage
 local UNBREAKABLE_SPELLS = {
 	[  710] = 30, -- Banish
 	--[33786] =  6, -- Cyclone
