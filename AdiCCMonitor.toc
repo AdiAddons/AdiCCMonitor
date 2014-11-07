@@ -1,4 +1,4 @@
-## Interface: 50400
+## Interface: 60000
 
 ## Title: AdiCCMonitor
 ## Notes: Crowd-control monitor.
@@ -33,4 +33,3 @@ AdiCCMonitor.lua
 Icons.lua
 Alerts.lua
 Options.lua
-
