@@ -105,15 +105,11 @@ local DEFAULT_SETTINGS = {
 local SPELLS = {
 	-- Druid
 	[   339] = 30, -- Entangling Roots
-	[  2637] = 40, -- Hibernate
-	[ 19975] = 27, -- Nature's Grasp (Uses different spellIDs than Entangling Roots for the same spell)
 	[102359] = 20, -- Mass Entanglement (talent)
-	[113275] = 30, -- Entangling Roots (Symbiosis)
 
 	-- Hunter
-	[  1513] = 20, -- Scare Beast
 	[  3355] = 60, -- Freezing Trap
-	[ 19386] = 30, -- Wyvern Sting
+	[ 19386] = 30, -- Wyvern Sting (talent)
 
 	-- Mage
 	[   118] = 50, -- Polymorph
@@ -121,18 +117,23 @@ local SPELLS = {
 	[ 28272] = 50, -- Polymorph (Pig)
 	[ 61305] = 50, -- Polymorph (Black cat)
 	[ 61721] = 50, -- Polymorph (Rabbit)
-	[ 61780] = 50, -- Polymorph (Turkey)
-	[113724] = 10, -- Ring of Frost
+	[126819] = 50, -- Polymorph (Porcupine) -- currently unobtainable
+	[161353] = 50, -- Polymorph (Polar Bear Cub) -- currently unobtainable
+	[161354] = 50, -- Polymorph (Monkey) -- currently unobtainable
+	[161355] = 50, -- Polymorph (Penguin) -- currently unobtainable
+	[161372] = 50, -- Polymorph (Peacock) -- source unknown
+	[113724] = 10, -- Ring of Frost -- TODO: remove cos too short?
+
+	-- Monk
+	[115078] = 60, -- Paralysis
 
 	-- Paladin
 	[ 10326] = 40, -- Turn Evil
 	[ 20066] = 60, -- Repentance
-	[145067] = 40, -- Turn Evil (Evil is a Point of View)
 
 	-- Priest
 	[  9484] = 50, -- Shackle Undead
-	[108920] = 20, -- Void Tendrils
-	[113792] = 30, -- Psychic Terror (Pet)
+	[108920] = 20, -- Void Tendrils (talent)
 
 	-- Rogue
 	[  2094] = 60, -- Blind
@@ -143,34 +144,31 @@ local SPELLS = {
 
 	-- Warlock
 	[   710] = 30, -- Banish
-	[  5484] = 20, -- Howl of Terror
-	[  5782] = 20, -- Fear
+	[  5484] = 20, -- Howl of Terror (talent)
+	[  5782] = 20, -- Fear -- TODO: unused?
+	[118699] = 20, -- Fear (debuff id)
+	[130616] = 20, -- Fear (with Glyph of Fear)
 	[  6358] = 30, -- Seduction (Succubus)
-	[104045] = 20, -- Sleep (Demon form)
 	[115268] = 30, -- Mesmerize (Shivarra)
-
-	-- Monk
-	[115078] = 40, -- Paralysis
 }
 
 -- Spells with variable duration
 local VARIABLE_DURATION_SPELLS = {
-	[  3355] = true, -- Freezing Trap
-	[  6770] = true, -- Sap
-	[115078] = true, -- Paralysis
+	[  3355] = true, -- Freezing Trap (with Trap Mastery - 30% longer)
+	[  6770] = true, -- Sap (with Glyph of Sap)
 }
 
 -- Spells that do not break on first damage
 local RESILIENT_SPELLS = {
 	[   339] = true, -- Entangling Roots
-	[  5782] = true, -- Fear
+	[  5484] = true, -- Howl of Terror (talent)
+	[  5782] = true, -- Fear -- TODO: unused?
 	[ 10326] = true, -- Turn Evil
-	[ 19975] = true, -- Nature's Grasp (Uses different spellIDs than Entangling Roots for the same spell)
 	[ 51514] = true, -- Hex
 	[102359] = true, -- Mass Entanglement (talent)
-	[113275] = true, -- Entangling Roots (Symbiosis)
-	[118699] = true, -- Fear
-	[145067] = true, -- Turn Evil (Evil is a Point of View)
+	[108920] = true, -- Void Tendrils (talent)
+	[118699] = true, -- Fear (debuff id)
+	[130616] = true, -- Fear (with Glyph of Fear)
 }
 
 -- Spells that do not break on damage
@@ -192,7 +190,7 @@ function addon:OnInitialize()
 	LibStub('LibDualSpec-1.0'):EnhanceDatabase(self.db, addonName)
 
 	prefs = self.db.profile
-	
+
 	LibStub('AceConfig-3.0'):RegisterOptionsTable(addonName, self.GetOptions)
 	self.blizPanel = LibStub('AceConfigDialog-3.0'):AddToBlizOptions(addonName, addonName)
 
@@ -208,7 +206,7 @@ end
 
 function addon:OnEnable()
 	prefs = self.db.profile
-	
+
 	self:RegisterEvent('UNIT_AURA')
 	self:RegisterEvent('UNIT_TARGET')
 	self:RegisterEvent('PLAYER_FOCUS_CHANGED')
@@ -302,7 +300,7 @@ end
 --@end-debug@
 
 --------------------------------------------------------------------------------
--- Event processing 
+-- Event processing
 --------------------------------------------------------------------------------
 
 do
@@ -317,12 +315,12 @@ do
 		frame:Hide()
 		return addon:ProcessUpdates()
 	end)
-	
+
 	function addon:ScheduleProcessing()
 		delay = 0.1
 		frame:Show()
 	end
-	
+
 	function addon:CancelProcessing()
 		frame:Hide()
 	end
