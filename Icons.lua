@@ -74,8 +74,8 @@ local iconHeap = {}
 local activeIcons = {}
 
 function mod:OnInitialize()
-	self.db = addon.db:RegisterNamespace(self.moduleName, DEFAULT_SETTINGS)	
-	mod:OnInitializeButtonFacade()
+	self.db = addon.db:RegisterNamespace(self.moduleName, DEFAULT_SETTINGS)
+	mod:OnInitializeMasque()
 end
 
 function mod:OnEnable()
@@ -114,7 +114,7 @@ function mod:ApplySettings(fullRefresh)
 	else
 		width, height = (prefs.iconSpacing + prefs.iconSize) * prefs.numIcons - prefs.iconSpacing, prefs.iconSize
 	end
-	
+
 	local a = prefs.anchor
 	anchor:SetSize(width, height)
 	anchor:SetAlpha(prefs.alpha)
@@ -125,7 +125,7 @@ function mod:ApplySettings(fullRefresh)
 	if prefs.bigIcons then
 		local a = prefs.anchorBig
 		anchorBig:SetSize((prefs.iconSpacing + prefs.iconSize) * prefs.numIcons - prefs.iconSpacing, prefs.iconSize)
-		anchorBig:SetAlpha(prefs.alpha)	
+		anchorBig:SetAlpha(prefs.alpha)
 		anchorBig:ClearAllPoints()
 		anchorBig:SetScale(a.scale)
 		anchorBig:SetPoint(a.pointFrom, UIParent, a.pointTo, a.xOffset, a.yOffset)
@@ -137,8 +137,6 @@ function mod:ApplySettings(fullRefresh)
 	for icon in self:IterateIcons() do
 		icon:UpdateWidgets()
 	end
-	
-	self:ApplyButtonFacadeSettings()
 
 	if fullRefresh then
 		self:FullRefresh()
@@ -383,9 +381,9 @@ function mod:CreateIcon()
 	local caster = overlay:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
 	caster:Hide()
 	icon.Caster = caster
-	
+
 	icon:SetSize(prefs.iconSize, prefs.iconSize)
-	mod:ButtonFacadeSkin(icon)
+	mod:MasqueSkin(icon)
 
 	return icon
 end
@@ -476,7 +474,7 @@ function iconProto:OnUpdate(now, elapsed)
 		if prefs.blinking and now > self.expires - prefs.blinkingThreshold then
 			local f = now % 1
 			if f > 0.5 then
-				targetAlpha = 1.8 - 1.6 * f 
+				targetAlpha = 1.8 - 1.6 * f
 			else
 				targetAlpha = 0.2 + 1.6 * f
 			end
@@ -553,7 +551,7 @@ function iconProto:SetTextPosition(text, side)
 			justify = text:GetPoint()
 		end
 		text:SetJustifyH((justify == "LEFT" or justify == "RIGHT") and justify or "CENTER")
-		text:SetJustifyV((justify == "TOP" or justify == "BOTTOM") and justify or "MIDDLE")	
+		text:SetJustifyV((justify == "TOP" or justify == "BOTTOM") and justify or "MIDDLE")
 	end
 	if text.fontName ~= prefs.fontName or text.size ~= prefs.fontSize then
 		text.fontName, text.size = prefs.fontName, prefs.fontSize
@@ -754,37 +752,26 @@ function mod:GetOptions()
 end
 
 --------------------------------------------------------------------------------
--- ButtonFacade support
+-- Masque support
 --------------------------------------------------------------------------------
 
-local LBF = LibStub('LibButtonFacade', true)
-if not LBF then
-	-- No ButtonFacade, create bgous methods and leave
-	function mod:OnInitializeButtonFacade() end
-	function mod:ButtonFacadeSkin() end
-	function mod:ApplyButtonFacadeSettings() end
+local MSQ = LibStub('Masque', true)
+if not MSQ then
+	-- No Masque, create bogus methods and leave
+	function mod:OnInitializeMasque() end
+	function mod:MasqueSkin() end
 else
-	-- LBF support
-
+	-- Masque support
 	local group
 
-	function mod:OnInitializeButtonFacade()
-		local db = addon.db:RegisterNamespace(self.name.."_ButtonFacade", { profile = { skinID = "Zoomed" } })	
-		group = LBF:Group(addonName)
-		LBF:RegisterSkinCallback(addonName, function(_, skinID, gloss, backdrop, _, _, colors)
-			local skin = db.profile
-			skin.skinID, skin.gloss, skin.backdrop, skin.colors = skinID, gloss, backdrop, colors
-		end, addon)
-		function self:ApplyButtonFacadeSettings()
-			local skin = db.profile
-			group:Skin(skin.skinID, skin.gloss, skin.backdrop, skin.colors)
-		end
+	function mod:OnInitializeMasque()
+		group = MSQ:Group(addonName)
 	end
 
-	function mod:ButtonFacadeSkin(icon)
+	function mod:MasqueSkin(icon)
 		-- Extract existing data
 		local data = { Icon = icon.Texture }
-		
+
 		-- Hide the default backdrop
 		icon:SetBackdrop(nil)
 
@@ -799,5 +786,5 @@ else
 		-- Register the icon
 		group:AddButton(icon, data)
 	end
-		
+
 end
