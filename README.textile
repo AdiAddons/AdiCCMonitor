@@ -1,4 +1,4 @@
-h1. ABANDONNED
+h1. ABANDONED
 
 AdiCCMonitor helps you keeping track of group crowd-control spells.
 
